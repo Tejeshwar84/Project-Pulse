@@ -8,6 +8,16 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+model Company {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+  teams       Team[]
+}
+
 model Project {
   id          String   @id @default(cuid())
   name        String
@@ -70,8 +80,12 @@ model User {
   role             String       @default("employee") // admin | manager | employee
   verified         Boolean      @default(false)
   verificationCode String?
+  companyId        String?
+  approvalStatus   String       @default("approved") // pending | approved | rejected
+  requestedRole    String?
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
+  company          Company?     @relation(fields: [companyId], references: [id], onDelete: SetNull)
   teamMemberships  TeamMember[]
   assignedTasks    Task[]
 }
@@ -80,9 +94,11 @@ model Team {
   id          String       @id @default(cuid())
   name        String
   description String?
+  companyId   String?
   createdBy   String       // userId of the creator
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
+  company     Company?     @relation(fields: [companyId], references: [id], onDelete: SetNull)
   members     TeamMember[]
   projects    Project[]
 }
