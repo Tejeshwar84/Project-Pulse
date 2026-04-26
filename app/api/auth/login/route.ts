@@ -16,6 +16,9 @@ export async function POST(req: Request) {
 
         const sessionValue = encodeSession({ userId: user.id, email: user.email, name: user.name, role: user.role });
         const res = NextResponse.json({ success: true, role: user.role });
+        // Clear any existing session cookie first
+        res.cookies.delete(SESSION_COOKIE);
+        // Set the new session cookie
         res.cookies.set(SESSION_COOKIE, sessionValue, {
             httpOnly: true,
             path: '/',

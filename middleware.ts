@@ -26,7 +26,15 @@ export function middleware(req: NextRequest) {
         return NextResponse.redirect(url);
     }
 
-    return NextResponse.next();
+    // Add cache control headers to prevent caching of session-dependent pages
+    const res = NextResponse.next();
+    if (PROTECTED.some((p) => pathname.startsWith(p)) || AUTH_ONLY.some((p) => pathname.startsWith(p))) {
+        res.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.headers.set('Pragma', 'no-cache');
+        res.headers.set('Expires', '0');
+    }
+
+    return res;
 }
 
 export const config = {

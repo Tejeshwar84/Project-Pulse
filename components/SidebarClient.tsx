@@ -18,7 +18,8 @@ export default function SidebarClient({ role, name }: { role: Role; name: string
 
     async function handleSignOut() {
         await fetch('/api/auth/logout', { method: 'POST' })
-        router.push('/')
+        // Force a full page reload to clear all cached session state
+        window.location.href = '/';
     }
 
     return (
