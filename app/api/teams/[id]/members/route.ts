@@ -20,6 +20,35 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const { userId } = await req.json()
     if (!userId) return NextResponse.json({ error: 'userId is required.' }, { status: 400 })
 
+    // Validate that the team belongs to the user's company
+    const userCompany = await prisma.user.findUnique({
+        where: { id: session.userId },
+        select: { companyId: true },
+    })
+
+    if (!userCompany?.companyId) {
+        return NextResponse.json({ error: 'You must be associated with a company.' }, { status: 400 })
+    }
+
+    const team = await prisma.team.findUnique({
+        where: { id: params.id },
+        select: { companyId: true },
+    })
+
+    if (!team || team.companyId !== userCompany.companyId) {
+        return NextResponse.json({ error: 'You can only manage teams from your company.' }, { status: 403 })
+    }
+
+    // Validate that the user being added belongs to the same company
+    const targetUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { companyId: true },
+    })
+
+    if (!targetUser || targetUser.companyId !== userCompany.companyId) {
+        return NextResponse.json({ error: 'You can only add users from your company to teams.' }, { status: 400 })
+    }
+
     try {
         const member = await prisma.teamMember.create({
             data: { teamId: params.id, userId },
@@ -42,6 +71,25 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     const { searchParams } = new URL(req.url)
     const userId = searchParams.get('userId')
     if (!userId) return NextResponse.json({ error: 'userId is required.' }, { status: 400 })
+
+    // Validate that the team belongs to the user's company
+    const userCompany = await prisma.user.findUnique({
+        where: { id: session.userId },
+        select: { companyId: true },
+    })
+
+    if (!userCompany?.companyId) {
+        return NextResponse.json({ error: 'You must be associated with a company.' }, { status: 400 })
+    }
+
+    const team = await prisma.team.findUnique({
+        where: { id: params.id },
+        select: { companyId: true },
+    })
+
+    if (!team || team.companyId !== userCompany.companyId) {
+        return NextResponse.json({ error: 'You can only manage teams from your company.' }, { status: 403 })
+    }
 
     await prisma.teamMember.deleteMany({ where: { teamId: params.id, userId } })
     return NextResponse.json({ ok: true })

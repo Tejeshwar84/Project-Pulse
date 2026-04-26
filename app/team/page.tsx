@@ -11,24 +11,39 @@ export default async function TeamPage() {
   const canManage = session?.role === 'admin' || session?.role === 'manager'
 
   // Fetch data server-side and pass as props — avoids client-side Prisma issues
-  const [teams, allUsers] = await Promise.all([
-    (prisma as any).team.findMany({
-      include: {
-        members: {
-          include: { user: { select: { id: true, name: true, email: true, role: true } } },
-          orderBy: { joinedAt: 'asc' },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    }) as Promise<any[]>,
-    canManage
-      ? (prisma as any).user.findMany({
-        where: { verified: true },
-        select: { id: true, name: true, email: true, role: true },
-        orderBy: { name: 'asc' },
-      }) as Promise<any[]>
-      : Promise.resolve([]),
-  ])
+  let teams: any[] = []
+  let allUsers: any[] = []
+
+  if (session) {
+    const user = await prisma.user.findUnique({
+      where: { id: session.userId },
+      select: { companyId: true },
+    })
+
+    if (user?.companyId) {
+      const [teamsData, usersData] = await Promise.all([
+        (prisma as any).team.findMany({
+          where: { companyId: user.companyId },
+          include: {
+            members: {
+              include: { user: { select: { id: true, name: true, email: true, role: true } } },
+              orderBy: { joinedAt: 'asc' },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+        }) as Promise<any[]>,
+        canManage
+          ? (prisma as any).user.findMany({
+            where: { verified: true, companyId: user.companyId },
+            select: { id: true, name: true, email: true, role: true },
+            orderBy: { name: 'asc' },
+          }) as Promise<any[]>
+          : Promise.resolve([]),
+      ])
+      teams = teamsData
+      allUsers = usersData
+    }
+  }
 
   return (
     <div className="p-8 animate-slide-up">

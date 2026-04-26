@@ -15,8 +15,18 @@ export async function GET() {
     const session = getSession()
 
     if (session) {
-        // Authenticated: return full details
+        // Authenticated: return teams from user's company only
+        const user = await prisma.user.findUnique({
+            where: { id: session.userId },
+            select: { companyId: true },
+        })
+
+        if (!user?.companyId) {
+            return NextResponse.json([])
+        }
+
         const teams = await prisma.team.findMany({
+            where: { companyId: user.companyId },
             include: {
                 members: {
                     include: {
@@ -29,7 +39,8 @@ export async function GET() {
         return NextResponse.json(teams)
     }
 
-    // Unauthenticated (registration form): return minimal list
+    // Unauthenticated (registration form): return minimal list - but should this be filtered?
+    // For now, keep showing all companies for registration, but this might need to change
     const teams = await prisma.team.findMany({
         select: { id: true, name: true, description: true },
         orderBy: { name: 'asc' },
@@ -47,8 +58,23 @@ export async function POST(req: Request) {
     const { name, description } = await req.json()
     if (!name?.trim()) return NextResponse.json({ error: 'Team name is required.' }, { status: 400 })
 
+    // Get user's company
+    const user = await prisma.user.findUnique({
+        where: { id: session.userId },
+        select: { companyId: true },
+    })
+
+    if (!user?.companyId) {
+        return NextResponse.json({ error: 'You must be associated with a company to create teams.' }, { status: 400 })
+    }
+
     const team = await prisma.team.create({
-        data: { name: name.trim(), description: description?.trim() || null, createdBy: session.userId },
+        data: {
+            name: name.trim(),
+            description: description?.trim() || null,
+            createdBy: session.userId,
+            companyId: user.companyId,
+        },
         include: { members: { include: { user: { select: { id: true, name: true, email: true, role: true } } } } },
     })
     return NextResponse.json(team, { status: 201 })

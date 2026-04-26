@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
+import { getSession } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,10 +16,50 @@ function StatusDot({ status }: { status: string }) {
 }
 
 export default async function Dashboard() {
-  const projects = await prisma.project.findMany({
-    include: { tasks: true },
-    orderBy: { riskScore: 'desc' },
-  })
+  const session = getSession()
+
+  let projects: any[] = []
+
+  if (session) {
+    const user = await prisma.user.findUnique({
+      where: { id: session.userId },
+      select: { companyId: true },
+    })
+
+    if (user?.companyId) {
+      if (session.role === 'employee') {
+        // Employees: find their team memberships, then only show projects from those teams
+        const memberships = await prisma.teamMember.findMany({
+          where: { userId: session.userId },
+          select: { teamId: true },
+        })
+        const teamIds = memberships.map(m => m.teamId)
+
+        if (teamIds.length > 0) {
+          projects = await prisma.project.findMany({
+            where: { teamId: { in: teamIds } },
+            include: { tasks: true },
+            orderBy: { riskScore: 'desc' },
+          })
+        }
+      } else {
+        // Admins and managers: show all projects from their company
+        const companyTeams = await prisma.team.findMany({
+          where: { companyId: user.companyId },
+          select: { id: true },
+        })
+        const teamIds = companyTeams.map(t => t.id)
+
+        if (teamIds.length > 0) {
+          projects = await prisma.project.findMany({
+            where: { teamId: { in: teamIds } },
+            include: { tasks: true },
+            orderBy: { riskScore: 'desc' },
+          })
+        }
+      }
+    }
+  }
 
   const totalBudget = projects.reduce((s, p) => s + p.budget, 0)
   const totalSpent = projects.reduce((s, p) => s + p.spent, 0)
