@@ -28,6 +28,13 @@ export async function POST(req: Request) {
         if (message === 'NOT_VERIFIED') {
             return NextResponse.json({ error: 'Please verify your email before logging in.', code: 'NOT_VERIFIED' }, { status: 403 });
         }
+        if (message === 'PENDING_APPROVAL') {
+            return NextResponse.json({ error: 'Awaiting admin approval.', code: 'PENDING_APPROVAL' }, { status: 403 });
+        }
+        if (message === 'REJECTED') {
+            return NextResponse.json({ error: 'Your account has been rejected.', code: 'REJECTED' }, { status: 403 });
+        }
         return NextResponse.json({ error: 'Invalid email or password.' }, { status: 401 });
     }
 }
+

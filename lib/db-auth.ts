@@ -25,6 +25,9 @@ export async function registerUser(input: {
     email: string;
     password: string;
     role?: Role;
+    companyId?: string | null;
+    approvalStatus?: string;
+    requestedRole?: string | null;
 }): Promise<{ email: string; id: string }> {
     const existing = await prisma.user.findUnique({
         where: { email: input.email.toLowerCase().trim() },
@@ -40,7 +43,10 @@ export async function registerUser(input: {
             passwordHash,
             role: validateRole(input.role),
             verified: true,
+            approvalStatus: input.approvalStatus ?? 'approved',
+            requestedRole: input.requestedRole ?? null,
             verificationCode: null,
+            companyId: input.companyId ?? null,
         },
     });
 
@@ -90,6 +96,8 @@ export async function loginUser(
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) throw new Error('INVALID_CREDENTIALS');
     if (!user.verified) throw new Error('NOT_VERIFIED');
+    if (user.approvalStatus === 'pending') throw new Error('PENDING_APPROVAL');
+    if (user.approvalStatus === 'rejected') throw new Error('REJECTED');
 
     return { id: user.id, name: user.name, email: user.email, role: user.role as Role };
 }

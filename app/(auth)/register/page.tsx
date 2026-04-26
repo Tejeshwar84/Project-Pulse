@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 
 type RoleOption = 'admin' | 'manager' | 'employee';
 
-interface Team {
+interface Company {
     id: string;
     name: string;
     description?: string | null;
@@ -13,35 +13,54 @@ interface Team {
 
 export default function RegisterPage() {
     const router = useRouter();
-    const [form, setForm] = useState({ name: '', email: '', password: '', role: 'employee' as RoleOption, teamId: '' });
+    const [form, setForm] = useState({ name: '', email: '', password: '', role: 'employee' as RoleOption, companyId: '' });
+    const [newCompanyName, setNewCompanyName] = useState('');
+    const [newCompanyDesc, setNewCompanyDesc] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const [teams, setTeams] = useState<Team[]>([]);
-    const [teamsLoading, setTeamsLoading] = useState(true);
+    const [companies, setCompanies] = useState<Company[]>([]);
+    const [companiesLoading, setCompaniesLoading] = useState(true);
 
     useEffect(() => {
-        fetch('/api/teams')
+        fetch('/api/companies')
             .then(r => r.json())
-            .then((data: Team[]) => setTeams(Array.isArray(data) ? data : []))
-            .catch(() => setTeams([]))
-            .finally(() => setTeamsLoading(false));
+            .then((data: Company[]) => setCompanies(Array.isArray(data) ? data : []))
+            .catch(() => setCompanies([]))
+            .finally(() => setCompaniesLoading(false));
     }, []);
 
     async function handleSubmit(e: FormEvent) {
         e.preventDefault();
         setError('');
 
-        if (form.role === 'employee' && !form.teamId) {
-            setError('Please select the company you are working for.');
-            return;
+        if (form.role === 'admin') {
+            if (!newCompanyName.trim()) {
+                setError('Please enter a company name for your admin account.');
+                return;
+            }
+        } else {
+            if (!form.companyId) {
+                setError('Please select the company you are joining.');
+                return;
+            }
         }
 
         setLoading(true);
         try {
+            const payload = {
+                name: form.name,
+                email: form.email,
+                password: form.password,
+                role: form.role,
+                companyId: form.role !== 'admin' ? form.companyId : undefined,
+                companyName: form.role === 'admin' ? newCompanyName.trim() : undefined,
+                companyDescription: form.role === 'admin' ? newCompanyDesc.trim() : undefined,
+            };
+
             const res = await fetch('/api/auth/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(form),
+                body: JSON.stringify(payload),
             });
             const data = await res.json();
             if (!res.ok) { setError(data.error); return; }
@@ -107,7 +126,11 @@ export default function RegisterPage() {
                         {roles.map(r => (
                             <button
                                 key={r.value} type="button"
-                                onClick={() => setForm(f => ({ ...f, role: r.value, teamId: '' }))}
+                                onClick={() => {
+                                    setForm(f => ({ ...f, role: r.value, companyId: '' }));
+                                    setNewCompanyName('');
+                                    setNewCompanyDesc('');
+                                }}
                                 className={`text-left p-3 rounded-xl border-2 transition-all ${form.role === r.value ? roleStyle[r.value].active : 'border-white/8 hover:border-white/20 text-white/50'
                                     }`}
                             >
@@ -119,35 +142,65 @@ export default function RegisterPage() {
                     </div>
                 </div>
 
-                {/* Company selector — only for employees */}
-                {form.role === 'employee' && (
+                {(form.role === 'manager' || form.role === 'employee') && (
                     <div>
                         <label className="block text-xs font-medium text-white/50 uppercase tracking-widest mb-1.5">
-                            Company / Team
+                            Select Company
                         </label>
-                        {teamsLoading ? (
+                        {companiesLoading ? (
                             <div className="w-full bg-surface-3 border border-white/8 rounded-lg px-4 py-2.5 text-sm text-white/30">
                                 Loading companies…
                             </div>
-                        ) : teams.length === 0 ? (
+                        ) : companies.length === 0 ? (
                             <div className="w-full bg-surface-3 border border-white/8 rounded-lg px-4 py-2.5 text-sm text-white/30">
-                                No companies registered yet. Ask your manager to create one first.
+                                No companies registered yet. Ask an admin to create one first.
                             </div>
                         ) : (
                             <select
                                 required
-                                value={form.teamId}
-                                onChange={e => setForm(f => ({ ...f, teamId: e.target.value }))}
+                                aria-label="Select company"
+                                value={form.companyId}
+                                onChange={e => setForm(f => ({ ...f, companyId: e.target.value }))}
                                 className="w-full bg-surface-3 border border-white/8 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors appearance-none cursor-pointer"
                             >
                                 <option value="" disabled className="bg-surface-3">Select your company…</option>
-                                {teams.map(t => (
-                                    <option key={t.id} value={t.id} className="bg-surface-3">
-                                        {t.name}
+                                {companies.map(c => (
+                                    <option key={c.id} value={c.id} className="bg-surface-3">
+                                        {c.name}
                                     </option>
                                 ))}
                             </select>
                         )}
+                    </div>
+                )}
+
+                {form.role === 'admin' && (
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-medium text-white/50 uppercase tracking-widest mb-1.5">
+                                Create Company
+                            </label>
+                            <input
+                                type="text"
+                                required
+                                placeholder="Company name"
+                                value={newCompanyName}
+                                onChange={e => setNewCompanyName(e.target.value)}
+                                className="w-full bg-surface-3 border border-white/8 rounded-lg px-4 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-white/50 uppercase tracking-widest mb-1.5">
+                                Company Description
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="Optional description"
+                                value={newCompanyDesc}
+                                onChange={e => setNewCompanyDesc(e.target.value)}
+                                className="w-full bg-surface-3 border border-white/8 rounded-lg px-4 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
+                            />
+                        </div>
                     </div>
                 )}
 
