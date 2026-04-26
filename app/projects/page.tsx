@@ -33,26 +33,30 @@ export default async function ProjectsPage() {
     }
   } else {
     // Admins and managers see projects from their company only
-    const user = await prisma.user.findUnique({
-      where: { id: session.userId },
-      select: { companyId: true },
-    })
-
-    if (!user?.companyId) {
+    if (!session) {
       projects = []
     } else {
-      // Get teams from user's company, then get projects assigned to those teams
-      const companyTeams = await prisma.team.findMany({
-        where: { companyId: user.companyId },
-        select: { id: true },
+      const user = await prisma.user.findUnique({
+        where: { id: session.userId },
+        select: { companyId: true },
       })
-      const teamIds = companyTeams.map(t => t.id)
 
-      projects = await (prisma.project.findMany as any)({
-        where: teamIds.length > 0 ? { teamId: { in: teamIds } } : { teamId: null },
-        include: { tasks: true, team: { select: { name: true } } },
-        orderBy: { createdAt: 'desc' },
-      })
+      if (!user?.companyId) {
+        projects = []
+      } else {
+        // Get teams from user's company, then get projects assigned to those teams
+        const companyTeams = await prisma.team.findMany({
+          where: { companyId: user.companyId },
+          select: { id: true },
+        })
+        const teamIds = companyTeams.map(t => t.id)
+
+        projects = await (prisma.project.findMany as any)({
+          where: teamIds.length > 0 ? { teamId: { in: teamIds } } : { teamId: null },
+          include: { tasks: true, team: { select: { name: true } } },
+          orderBy: { createdAt: 'desc' },
+        })
+      }
     }
   }
 

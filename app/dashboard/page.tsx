@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import { getSession } from '@/lib/session'
+import AdminApprovals from '@/components/AdminApprovals'
 
 export const dynamic = 'force-dynamic'
 
@@ -64,14 +65,14 @@ export default async function Dashboard() {
   const totalBudget = projects.reduce((s, p) => s + p.budget, 0)
   const totalSpent = projects.reduce((s, p) => s + p.spent, 0)
   const totalTasks = projects.reduce((s, p) => s + p.tasks.length, 0)
-  const doneTasks = projects.reduce((s, p) => s + p.tasks.filter(t => t.status === 'done').length, 0)
+  const doneTasks = projects.reduce((s, p) => s + p.tasks.filter((t: any) => t.status === 'done').length, 0)
   const atRisk = projects.filter(p => p.riskScore >= 70).length
 
   const stats = [
     { label: 'Active Projects', value: projects.length, sub: `${atRisk} at risk`, color: 'text-accent-light' },
     { label: 'Total Budget', value: `$${(totalBudget / 1000).toFixed(0)}k`, sub: `$${(totalSpent / 1000).toFixed(0)}k spent`, color: 'text-sky' },
-    { label: 'Tasks Complete', value: `${doneTasks}/${totalTasks}`, sub: `${Math.round(doneTasks / totalTasks * 100)}% done`, color: 'text-jade' },
-    { label: 'Budget Health', value: `${Math.round(totalSpent / totalBudget * 100)}%`, sub: 'utilization', color: totalSpent / totalBudget > 0.8 ? 'text-rose' : 'text-amber' },
+    { label: 'Tasks Complete', value: `${doneTasks}/${totalTasks}`, sub: `${totalTasks > 0 ? Math.round(doneTasks / totalTasks * 100) : 0}% done`, color: 'text-jade' },
+    { label: 'Budget Health', value: `${totalBudget > 0 ? Math.round(totalSpent / totalBudget * 100) : 0}%`, sub: 'utilization', color: totalBudget > 0 && totalSpent / totalBudget > 0.8 ? 'text-rose' : 'text-amber' },
   ]
 
   return (
@@ -107,6 +108,11 @@ export default async function Dashboard() {
         </div>
       )}
 
+      {/* Admin Approvals */}
+      {session?.role === 'admin' && (
+        <AdminApprovals />
+      )}
+
       {/* Projects Table */}
       <div className="glass rounded-xl overflow-hidden">
         <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
@@ -123,7 +129,7 @@ export default async function Dashboard() {
           </thead>
           <tbody className="divide-y divide-white/5">
             {projects.map((p) => {
-              const done = p.tasks.filter(t => t.status === 'done').length
+              const done = p.tasks.filter((t: any) => t.status === 'done').length
               const pct = p.tasks.length ? Math.round(done / p.tasks.length * 100) : 0
               const budgetPct = Math.round(p.spent / p.budget * 100)
               const deadline = new Date(p.deadline)

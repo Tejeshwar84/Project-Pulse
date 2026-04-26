@@ -13,9 +13,19 @@ export async function GET() {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    // Get user's company
+    const user = await prisma.user.findUnique({
+        where: { id: session.userId },
+        select: { companyId: true },
+    })
+
+    if (!user?.companyId) {
+        return NextResponse.json({ error: 'You must be associated with a company.' }, { status: 400 })
+    }
+
     const users = await prisma.user.findMany({
-        where: { verified: true },
-        select: { id: true, name: true, email: true, role: true },
+        where: { verified: true, companyId: user.companyId },
+        select: { id: true, name: true, email: true, role: true, approvalStatus: true, requestedRole: true },
         orderBy: { name: 'asc' },
     })
     return NextResponse.json(users)

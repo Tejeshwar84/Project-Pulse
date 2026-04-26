@@ -4,6 +4,7 @@ import { SESSION_COOKIE, decodeSession } from './lib/auth';
 
 const PROTECTED = ['/dashboard', '/projects', '/budget', '/team'];
 const AUTH_ONLY = ['/login', '/register', '/verify'];
+const SESSION_DEPENDENT_APIS = ['/api/users', '/api/teams', '/api/projects', '/api/tasks', '/api/messages', '/api/budget'];
 
 export function middleware(req: NextRequest) {
     const { pathname } = req.nextUrl;
@@ -26,9 +27,11 @@ export function middleware(req: NextRequest) {
         return NextResponse.redirect(url);
     }
 
-    // Add cache control headers to prevent caching of session-dependent pages
+    // Add cache control headers to prevent caching of session-dependent pages and APIs
     const res = NextResponse.next();
-    if (PROTECTED.some((p) => pathname.startsWith(p)) || AUTH_ONLY.some((p) => pathname.startsWith(p))) {
+    if (PROTECTED.some((p) => pathname.startsWith(p)) ||
+        AUTH_ONLY.some((p) => pathname.startsWith(p)) ||
+        SESSION_DEPENDENT_APIS.some((p) => pathname.startsWith(p))) {
         res.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.headers.set('Pragma', 'no-cache');
         res.headers.set('Expires', '0');
