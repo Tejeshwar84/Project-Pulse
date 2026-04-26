@@ -1,0 +1,59 @@
+# ProjectPulse 🚀
+
+**An AI-powered project management dashboard** built for teams to track projects, tasks, budgets, and risks — all in one place.
+
+---
+
+## What It Does
+
+ProjectPulse gives teams a central hub to manage everything about a project:
+
+- 📋 **Project Tracking** — Create and monitor projects with deadlines, budgets, and status
+- ✅ **Kanban Task Board** — Drag tasks across Todo → In Progress → Done → Blocked columns
+- 💰 **Budget Tracker** — Track spending per project and category with visual progress bars
+- 🤖 **AI Risk Analysis** — One-click AI assessment of project health using Mistral AI (falls back to rule-based analysis if no API key)
+- 💬 **Team Chat** — Real-time message stream per project
+- 👥 **Team Management** — Create teams, assign members, link teams to projects
+- 🔐 **Role-Based Access** — Three roles: `Admin`, `Manager`, `Employee` — each with different permissions
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend & Backend | Next.js 14 (App Router) |
+| Database | PostgreSQL via Neon (cloud) |
+| ORM | Prisma |
+| Auth | Custom session-based (cookie + base64 JWT) |
+| AI | Mistral AI API |
+| Styling | Tailwind CSS |
+| Deployment | Vercel |
+
+---
+
+## Roles & Permissions
+
+| Feature | Admin | Manager | Employee |
+|---|:---:|:---:|:---:|
+| Create / delete projects | ✅ | ✅ | ❌ |
+| Create / delete tasks | ✅ | ✅ | ❌ |
+| Update task status | ✅ | ✅ | ✅ |
+| Manage teams | ✅ | ✅ | ❌ |
+| View dashboard | ✅ | ✅ | ✅ |
+
+---
+
+## Getting Started (Local)
+
+```bash
+git clone https://github.com/DaKaufeeBoii/ProjectPulse.git
+cd ProjectPulse
+npm install
+# Create .env.local with DATABASE_URL (see .env.example)
+npx prisma db push
+npm run db:seed   # optional: seed sample data
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000)
