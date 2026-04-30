@@ -6,13 +6,13 @@ CREATE TABLE "new_Project" (
     "name" TEXT NOT NULL,
     "description" TEXT,
     "status" TEXT NOT NULL DEFAULT 'active',
-    "deadline" DATETIME NOT NULL,
+    "deadline" TIMESTAMP NOT NULL,
     "budget" REAL NOT NULL,
     "spent" REAL NOT NULL DEFAULT 0,
     "riskScore" INTEGER NOT NULL DEFAULT 0,
     "riskReason" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL,
     "teamId" TEXT,
     CONSTRAINT "Project_teamId_fkey" FOREIGN KEY ("teamId") REFERENCES "Team" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );

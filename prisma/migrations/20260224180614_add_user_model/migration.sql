@@ -4,13 +4,13 @@ CREATE TABLE "Project" (
     "name" TEXT NOT NULL,
     "description" TEXT,
     "status" TEXT NOT NULL DEFAULT 'active',
-    "deadline" DATETIME NOT NULL,
+    "deadline" TIMESTAMP NOT NULL,
     "budget" REAL NOT NULL,
     "spent" REAL NOT NULL DEFAULT 0,
     "riskScore" INTEGER NOT NULL DEFAULT 0,
     "riskReason" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL
 );
 
 -- CreateTable
@@ -21,10 +21,10 @@ CREATE TABLE "Task" (
     "status" TEXT NOT NULL DEFAULT 'todo',
     "priority" TEXT NOT NULL DEFAULT 'medium',
     "assignee" TEXT,
-    "dueDate" DATETIME,
+    "dueDate" TIMESTAMP,
     "projectId" TEXT NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL,
     CONSTRAINT "Task_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -35,7 +35,7 @@ CREATE TABLE "Message" (
     "author" TEXT NOT NULL,
     "avatar" TEXT,
     "projectId" TEXT NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "Message_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -47,8 +47,8 @@ CREATE TABLE "BudgetEntry" (
     "amount" REAL NOT NULL,
     "type" TEXT NOT NULL,
     "category" TEXT NOT NULL,
-    "date" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "date" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- CreateTable
@@ -60,8 +60,8 @@ CREATE TABLE "User" (
     "role" TEXT NOT NULL DEFAULT 'employee',
     "verified" BOOLEAN NOT NULL DEFAULT false,
     "verificationCode" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL
 );
 
 -- CreateIndex
