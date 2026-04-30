@@ -1,43 +1,65 @@
-import { NextResponse } from 'next/server';
-import { loginUser } from '@/lib/db-auth';
-import { encodeSession, SESSION_COOKIE } from '@/lib/auth';
+import { NextResponse } from "next/server";
+import { loginUser } from "@/lib/db-auth";
+import { encodeSession, SESSION_COOKIE } from "@/lib/auth";
 
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
-    try {
-        const { email, password } = await req.json();
+  try {
+    const { email, password } = await req.json();
 
-        if (!email?.trim() || !password) {
-            return NextResponse.json({ error: 'Email and password are required.' }, { status: 400 });
-        }
-
-        const user = await loginUser(email, password);
-
-        const sessionValue = encodeSession({ userId: user.id, email: user.email, name: user.name, role: user.role });
-        const res = NextResponse.json({ success: true, role: user.role });
-        // Clear any existing session cookie first
-        res.cookies.delete(SESSION_COOKIE);
-        // Set the new session cookie
-        res.cookies.set(SESSION_COOKIE, sessionValue, {
-            httpOnly: true,
-            path: '/',
-            maxAge: 60 * 60 * 24 * 7,
-            sameSite: 'lax',
-        });
-        return res;
-    } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Unknown error';
-        if (message === 'NOT_VERIFIED') {
-            return NextResponse.json({ error: 'Please verify your email before logging in.', code: 'NOT_VERIFIED' }, { status: 403 });
-        }
-        if (message === 'PENDING_APPROVAL') {
-            return NextResponse.json({ error: 'Awaiting admin approval.', code: 'PENDING_APPROVAL' }, { status: 403 });
-        }
-        if (message === 'REJECTED') {
-            return NextResponse.json({ error: 'Your account has been rejected.', code: 'REJECTED' }, { status: 403 });
-        }
-        return NextResponse.json({ error: 'Invalid email or password.' }, { status: 401 });
+    if (!email?.trim() || !password) {
+      return NextResponse.json(
+        { error: "Email and password are required." },
+        { status: 400 },
+      );
     }
-}
 
+    const user = await loginUser(email, password);
+
+    const sessionValue = encodeSession({
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    });
+    const res = NextResponse.json({ success: true, role: user.role });
+    // Clear any existing session cookie first
+    res.cookies.delete(SESSION_COOKIE);
+    // Set the new session cookie
+    res.cookies.set(SESSION_COOKIE, sessionValue, {
+      httpOnly: true,
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7,
+      sameSite: "lax",
+    });
+    return res;
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    if (message === "NOT_VERIFIED") {
+      return NextResponse.json(
+        {
+          error: "Please verify your email before logging in.",
+          code: "NOT_VERIFIED",
+        },
+        { status: 403 },
+      );
+    }
+    if (message === "PENDING_APPROVAL") {
+      return NextResponse.json(
+        { error: "Awaiting admin approval.", code: "PENDING_APPROVAL" },
+        { status: 403 },
+      );
+    }
+    if (message === "REJECTED") {
+      return NextResponse.json(
+        { error: "Your account has been rejected.", code: "REJECTED" },
+        { status: 403 },
+      );
+    }
+    return NextResponse.json(
+      { error: "Invalid email or password." },
+      { status: 401 },
+    );
+  }
+}
