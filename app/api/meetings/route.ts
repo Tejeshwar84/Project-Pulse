@@ -18,7 +18,10 @@ export async function GET() {
   });
 
   if (!user?.companyId) {
-    return NextResponse.json({ error: "No company associated" }, { status: 400 });
+    return NextResponse.json(
+      { error: "No company associated" },
+      { status: 400 },
+    );
   }
 
   const meetings = await prisma.meeting.findMany({
@@ -49,14 +52,20 @@ export async function POST(req: Request) {
   });
 
   if (!user?.companyId) {
-    return NextResponse.json({ error: "No company associated" }, { status: 400 });
+    return NextResponse.json(
+      { error: "No company associated" },
+      { status: 400 },
+    );
   }
 
   const body = await req.json();
   const { title, description, dateTime, participantIds } = body;
 
   if (!title || !dateTime) {
-    return NextResponse.json({ error: "Title and dateTime are required" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Title and dateTime are required" },
+      { status: 400 },
+    );
   }
 
   const meeting = await prisma.meeting.create({

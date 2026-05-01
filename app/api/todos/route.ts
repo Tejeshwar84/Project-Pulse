@@ -33,7 +33,10 @@ export async function POST(req: Request) {
   });
 
   if (!user?.companyId) {
-    return NextResponse.json({ error: "No company associated" }, { status: 400 });
+    return NextResponse.json(
+      { error: "No company associated" },
+      { status: 400 },
+    );
   }
 
   const body = await req.json();

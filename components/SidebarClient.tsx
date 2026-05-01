@@ -7,6 +7,8 @@ type Role = "admin" | "manager" | "employee";
 const nav = [
   { href: "/dashboard", label: "Dashboard", icon: "▦" },
   { href: "/projects", label: "Projects", icon: "◈" },
+  { href: "/meetings", label: "Meetings", icon: "📅" },
+  { href: "/todos", label: "My Todos", icon: "✓" },
   { href: "/budget", label: "Budget", icon: "◎" },
   { href: "/team", label: "Team", icon: "◉" },
 ];

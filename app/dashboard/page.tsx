@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { getSession } from "@/lib/session";
 import AdminApprovals from "@/components/AdminApprovals";
+import AlertsPanel from "@/components/AlertsPanel";
 import { formatCurrency } from "@/lib/currency";
 
 export const dynamic = "force-dynamic";
@@ -145,6 +146,9 @@ export default async function Dashboard() {
           </div>
         ))}
       </div>
+
+      {/* Alerts */}
+      <AlertsPanel />
 
       {/* At Risk Alert */}
       {atRisk > 0 && (

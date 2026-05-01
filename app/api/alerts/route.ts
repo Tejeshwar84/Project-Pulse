@@ -18,7 +18,10 @@ export async function GET() {
   });
 
   if (!user?.companyId) {
-    return NextResponse.json({ error: "No company associated" }, { status: 400 });
+    return NextResponse.json(
+      { error: "No company associated" },
+      { status: 400 },
+    );
   }
 
   const now = new Date();

@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
   const raw = cookies().get(SESSION_COOKIE)?.value;
   const session = raw ? decodeSession(raw) : null;
@@ -30,7 +30,8 @@ export async function PUT(
   const updateData: any = {};
   if (title !== undefined) updateData.title = title;
   if (completed !== undefined) updateData.completed = completed;
-  if (dueDate !== undefined) updateData.dueDate = dueDate ? new Date(dueDate) : null;
+  if (dueDate !== undefined)
+    updateData.dueDate = dueDate ? new Date(dueDate) : null;
 
   const updatedTodo = await prisma.todo.update({
     where: { id: params.id },
@@ -42,7 +43,7 @@ export async function PUT(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
   const raw = cookies().get(SESSION_COOKIE)?.value;
   const session = raw ? decodeSession(raw) : null;
