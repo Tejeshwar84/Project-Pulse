@@ -3,6 +3,26 @@ import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
+function clamp(value: number) {
+  return Math.max(0, Math.min(100, Math.round(value)))
+}
+
+function buildResponse(analysis: string, metrics: { completionPct: number; budgetUsed: number; daysLeft: number; blockedTasks: number }, factors: { deadline: number; budget: number; workload: number; completion: number }) {
+  const riskScore = clamp(
+    factors.deadline * 0.3 +
+    factors.budget * 0.25 +
+    factors.completion * 0.25 +
+    factors.workload * 0.2,
+  )
+
+  return {
+    analysis,
+    riskScore,
+    factors,
+    metrics,
+  }
+}
+
 export async function POST(req: Request) {
   const { projectId } = await req.json()
 
@@ -22,6 +42,20 @@ export async function POST(req: Request) {
   const budgetPct = Math.round(project.spent / project.budget * 100)
   const daysLeft = Math.ceil((new Date(project.deadline).getTime() - Date.now()) / 86400000)
   const completionPct = tasks.length ? Math.round(done / tasks.length * 100) : 0
+
+  const metrics = {
+    completionPct,
+    budgetUsed: budgetPct,
+    daysLeft,
+    blockedTasks: blocked,
+  }
+
+  const factors = {
+    deadline: clamp(daysLeft <= 0 ? 100 : ((30 - Math.min(daysLeft, 30)) / 30) * 100),
+    budget: clamp(budgetPct),
+    completion: clamp(100 - completionPct),
+    workload: clamp(blocked * 25 + highPrioOpen * 15 + Math.min(todo, 10) * 3),
+  }
 
   const prompt = `You are a project risk analyst. Analyze this project and provide a concise, actionable risk assessment in 3-4 sentences.
 
@@ -62,7 +96,7 @@ Provide a direct, practical risk assessment. Identify the top risks and suggest 
       data: { riskReason: analysis },
     })
 
-    return NextResponse.json({ analysis })
+    return NextResponse.json(buildResponse(analysis, metrics, factors))
   } catch {
     // Fallback: rule-based analysis if no API key
     const risks = []
@@ -80,6 +114,6 @@ Provide a direct, practical risk assessment. Identify the top risks and suggest 
       : `Risk flags: ${risks.join(', ')}. ${actions.length > 0 ? `Recommended actions: ${actions.join('; ')}.` : ''} Monitor closely and escalate if blockers persist.`
 
     await prisma.project.update({ where: { id: projectId }, data: { riskReason: analysis } })
-    return NextResponse.json({ analysis })
+    return NextResponse.json(buildResponse(analysis, metrics, factors))
   }
 }
