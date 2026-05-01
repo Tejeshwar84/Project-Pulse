@@ -85,8 +85,8 @@ export async function PUT(
   if (notes !== undefined) updateData.notes = notes;
   if (actionItems !== undefined) updateData.actionItems = actionItems;
 
-  if (participantIds) {
-    // Delete existing participants and add new ones
+  if (participantIds !== undefined) {
+    // Replace existing participants with the new list, even if empty
     await prisma.meetingParticipant.deleteMany({
       where: { meetingId: params.id },
     });
@@ -105,4 +105,46 @@ export async function PUT(
   });
 
   return NextResponse.json(updatedMeeting);
+}
+
+export async function DELETE(
+  req: Request,
+  { params }: { params: { id: string } },
+) {
+  const raw = cookies().get(SESSION_COOKIE)?.value;
+  const session = raw ? decodeSession(raw) : null;
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.userId },
+    select: { companyId: true },
+  });
+
+  if (!user?.companyId) {
+    return NextResponse.json(
+      { error: "No company associated" },
+      { status: 400 },
+    );
+  }
+
+  const meeting = await prisma.meeting.findUnique({
+    where: { id: params.id },
+    select: { companyId: true, createdBy: true },
+  });
+
+  if (!meeting || meeting.companyId !== user.companyId) {
+    return NextResponse.json({ error: "Meeting not found" }, { status: 404 });
+  }
+
+  if (meeting.createdBy !== session.userId && session.role === "employee") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  }
+
+  await prisma.meeting.delete({
+    where: { id: params.id },
+  });
+
+  return NextResponse.json({ success: true });
 }

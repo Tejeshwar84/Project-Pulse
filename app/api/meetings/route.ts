@@ -27,13 +27,21 @@ export async function GET() {
   const meetings = await prisma.meeting.findMany({
     where: { companyId: user.companyId },
     include: {
-      creator: { select: { name: true } },
-      participants: { include: { user: { select: { name: true } } } },
+      creator: { select: { name: true, id: true } },
+      participants: { include: { user: { select: { name: true, id: true } } } },
     },
     orderBy: { dateTime: "asc" },
   });
 
-  return NextResponse.json(meetings);
+  const meetingsWithPermissions = meetings.map((meeting) => ({
+    ...meeting,
+    canEdit:
+      meeting.createdBy === session.userId ||
+      session.role === "admin" ||
+      session.role === "manager",
+  }));
+
+  return NextResponse.json(meetingsWithPermissions);
 }
 
 export async function POST(req: Request) {

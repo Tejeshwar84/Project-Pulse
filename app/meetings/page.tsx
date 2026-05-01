@@ -8,7 +8,9 @@ interface Meeting {
   dateTime: string;
   notes?: string;
   actionItems?: string;
-  creator: { name: string };
+  createdBy: string;
+  canEdit: boolean;
+  creator: { name: string; id: string };
   participants: { user: { name: string; id: string } }[];
 }
 
@@ -22,11 +24,17 @@ export default function MeetingsPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     dateTime: "",
     participantIds: [] as string[],
+  });
+  const [editData, setEditData] = useState({
+    participantIds: [] as string[],
+    notes: "",
+    actionItems: "",
   });
 
   useEffect(() => {
@@ -101,6 +109,58 @@ export default function MeetingsPage() {
         ? prev.participantIds.filter((id) => id !== userId)
         : [...prev.participantIds, userId],
     }));
+  };
+
+  const openEditMeeting = (meeting: Meeting) => {
+    setEditingMeeting(meeting);
+    setEditData({
+      participantIds: meeting.participants.map((p) => p.user.id),
+      notes: meeting.notes ?? "",
+      actionItems: meeting.actionItems ?? "",
+    });
+  };
+
+  const closeEditMeeting = () => {
+    setEditingMeeting(null);
+  };
+
+  const handleUpdateMeeting = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMeeting) return;
+
+    try {
+      const res = await fetch(`/api/meetings/${editingMeeting.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editData),
+      });
+      if (res.ok) {
+        closeEditMeeting();
+        fetchMeetings();
+      } else {
+        const error = await res.json();
+        alert(error?.error || "Failed to update meeting");
+      }
+    } catch (error) {
+      console.error("Failed to update meeting:", error);
+    }
+  };
+
+  const handleDeleteMeeting = async (id: string) => {
+    if (!confirm("Delete this meeting?")) return;
+    try {
+      const res = await fetch(`/api/meetings/${id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        fetchMeetings();
+      } else {
+        const error = await res.json();
+        alert(error?.error || "Failed to delete meeting");
+      }
+    } catch (error) {
+      console.error("Failed to delete meeting:", error);
+    }
   };
 
   if (loading) return <div className="p-6">Loading...</div>;
@@ -203,6 +263,88 @@ export default function MeetingsPage() {
         </div>
       )}
 
+      {editingMeeting && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-surface-1 p-6 rounded-lg w-full max-w-md">
+            <h2 className="text-xl font-bold text-white mb-4">Edit Meeting</h2>
+            <form onSubmit={handleUpdateMeeting} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-white/80 mb-1">
+                  Participants
+                </label>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {users.map((user) => (
+                    <label key={user.id} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={editData.participantIds.includes(user.id)}
+                        onChange={() => {
+                          const next = editData.participantIds.includes(user.id)
+                            ? editData.participantIds.filter(
+                                (id) => id !== user.id,
+                              )
+                            : [...editData.participantIds, user.id];
+                          setEditData((prev) => ({
+                            ...prev,
+                            participantIds: next,
+                          }));
+                        }}
+                        className="rounded"
+                      />
+                      <span className="text-white/80">{user.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-white/80 mb-1">
+                  Notes
+                </label>
+                <textarea
+                  value={editData.notes}
+                  onChange={(e) =>
+                    setEditData((prev) => ({ ...prev, notes: e.target.value }))
+                  }
+                  className="w-full px-3 py-2 bg-surface-2 border border-white/10 rounded-lg text-white"
+                  rows={3}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-white/80 mb-1">
+                  Action Items
+                </label>
+                <textarea
+                  value={editData.actionItems}
+                  onChange={(e) =>
+                    setEditData((prev) => ({
+                      ...prev,
+                      actionItems: e.target.value,
+                    }))
+                  }
+                  className="w-full px-3 py-2 bg-surface-2 border border-white/10 rounded-lg text-white"
+                  rows={3}
+                />
+              </div>
+              <div className="flex gap-2 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/80"
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  onClick={closeEditMeeting}
+                  className="flex-1 px-4 py-2 bg-surface-2 text-white rounded-lg hover:bg-surface-3"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-4">
         {meetings.length === 0 ? (
           <p className="text-white/60">No meetings found.</p>
@@ -241,6 +383,22 @@ export default function MeetingsPage() {
                   ))}
                 </div>
               </div>
+              {meeting.canEdit && (
+                <div className="flex gap-2 mb-2">
+                  <button
+                    onClick={() => openEditMeeting(meeting)}
+                    className="px-3 py-1 text-sm bg-surface-3 text-white rounded-lg hover:bg-white/10"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteMeeting(meeting.id)}
+                    className="px-3 py-1 text-sm text-rose bg-rose/10 rounded-lg hover:bg-rose/20"
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
               {meeting.notes && (
                 <div className="mt-2">
                   <span className="text-sm font-medium text-white/80">
