@@ -19,6 +19,7 @@ model Company {
   teams       Team[]
   meetings    Meeting[]
   todos       Todo[]
+  expenses    Expense[]
 }
 
 model Project {
@@ -36,6 +37,7 @@ model Project {
   updatedAt   DateTime  @updatedAt
   tasks       Task[]
   messages    Message[]
+  expenses    Expense[]
   teamId      String?
   team        Team?     @relation(fields: [teamId], references: [id], onDelete: SetNull)
 }
@@ -95,6 +97,7 @@ model User {
   todos                Todo[]
   meetingsCreated      Meeting[]            @relation("MeetingCreator")
   meetingsParticipated MeetingParticipant[] @relation("MeetingParticipants")
+  expensesCreated      Expense[]            @relation("ExpenseCreator")
 }
 
 model Team {
@@ -158,4 +161,17 @@ model MeetingParticipant {
   user      User    @relation("MeetingParticipants", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([meetingId, userId])
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  amount      Float
+  description String
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy   String
+  creator     User     @relation("ExpenseCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
 }

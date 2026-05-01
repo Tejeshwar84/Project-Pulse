@@ -4,6 +4,7 @@ import { getSession } from "@/lib/session";
 import KanbanBoard from "./KanbanBoard";
 import ChatPanel from "./ChatPanel";
 import AIRiskPanel from "./AIRiskPanel";
+import ExpensePanel from "./ExpensePanel";
 import ProjectTeamSelector from "@/components/ProjectTeamSelector";
 
 export const dynamic = "force-dynamic";
@@ -166,6 +167,11 @@ export default async function ProjectPage({
               currentTeamId={project.teamId}
             />
           )}
+          <ExpensePanel
+            projectId={project.id}
+            projectBudget={project.budget}
+            projectSpent={project.spent}
+          />
           <ChatPanel
             initialMessages={project.messages as any}
             projectId={project.id}
