@@ -20,7 +20,7 @@ export async function POST(req: Request) {
   if (!user?.companyId) {
     return NextResponse.json(
       { error: "No company associated" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
   if (!amount || !description || !projectId) {
     return NextResponse.json(
       { error: "Amount, description, and projectId are required" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 

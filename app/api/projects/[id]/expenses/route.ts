@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
   const raw = cookies().get(SESSION_COOKIE)?.value;
   const session = raw ? decodeSession(raw) : null;
@@ -23,7 +23,7 @@ export async function GET(
   if (!user?.companyId) {
     return NextResponse.json(
       { error: "No company associated" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 

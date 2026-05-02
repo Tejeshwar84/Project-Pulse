@@ -1,162 +1,326 @@
-'use client'
-import { useState } from 'react'
+"use client";
+import { useMemo, useState } from "react";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+} from "recharts";
 
 type Project = {
-  id: string
-  name: string
-  riskScore: number
-  riskReason: string | null
-  budget: number
-  spent: number
-  deadline: string
-  tasks: { status: string; priority: string }[]
-}
+  id: string;
+  name: string;
+  riskScore: number;
+  riskReason: string | null;
+  budget: number;
+  spent: number;
+  deadline: string;
+  tasks: { status: string; priority: string }[];
+};
+
+type Factors = {
+  deadline: number;
+  budget: number;
+  workload: number;
+  completion: number;
+};
+
+type Metrics = {
+  completionPct: number;
+  budgetUsed: number;
+  daysLeft: number;
+  blockedTasks: number;
+};
 
 export default function AIRiskPanel({ project }: { project: Project }) {
-  const [analysis, setAnalysis] = useState<string>('')
-  const [loading, setLoading] = useState(false)
-  const [done, setDone] = useState(false)
-  const [riskScore, setRiskScore] = useState<number | null>(null)
-  const [factors, setFactors] = useState<{ deadline: number; budget: number; workload: number; completion: number } | null>(null)
-  const [metrics, setMetrics] = useState<{ completionPct: number; budgetUsed: number; daysLeft: number; blockedTasks: number } | null>(null)
+  const [analysis, setAnalysis] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
+  const [riskScore, setRiskScore] = useState<number | null>(null);
+  const [factors, setFactors] = useState<Factors | null>(null);
+  const [metrics, setMetrics] = useState<Metrics | null>(null);
 
-  const displayScore = riskScore !== null ? riskScore : project.riskScore
-  const scoreColor = displayScore > 70 ? 'text-rose' : displayScore >= 40 ? 'text-amber' : 'text-jade'
-  const scoreBg = displayScore > 70 ? 'border-rose/20 bg-rose/5' : displayScore >= 40 ? 'border-amber/20 bg-amber/5' : 'border-jade/20 bg-jade/5'
-  const panelBg = project.riskScore >= 70 ? 'border-rose/20 bg-rose/5' : project.riskScore >= 40 ? 'border-amber/20 bg-amber/5' : 'border-jade/20 bg-jade/5'
+  const displayScore = riskScore !== null ? riskScore : project.riskScore;
+  const riskColor =
+    displayScore > 70 ? "#fb7185" : displayScore >= 40 ? "#fbbf24" : "#34d399";
+  const displayColorClass =
+    displayScore > 70
+      ? "text-rose"
+      : displayScore >= 40
+        ? "text-amber"
+        : "text-jade";
+  const panelBg =
+    project.riskScore >= 70
+      ? "border-rose/20 bg-rose/5"
+      : project.riskScore >= 40
+        ? "border-amber/20 bg-amber/5"
+        : "border-jade/20 bg-jade/5";
 
-  const formatFactorLabel = (key: string) => {
-    switch (key) {
-      case 'deadline':
-        return 'Deadline'
-      case 'budget':
-        return 'Budget'
-      case 'workload':
-        return 'Workload'
-      case 'completion':
-        return 'Completion'
-      default:
-        return key
-    }
-  }
+  const factorChartData = useMemo(
+    () => [
+      { name: "Deadline", value: factors?.deadline ?? 0 },
+      { name: "Budget", value: factors?.budget ?? 0 },
+      { name: "Workload", value: factors?.workload ?? 0 },
+      { name: "Completion", value: factors?.completion ?? 0 },
+    ],
+    [factors],
+  );
+
+  const metricsCards = useMemo(
+    () => [
+      {
+        label: "Completion",
+        value: metrics ? `${metrics.completionPct}%` : "—",
+        accent: "text-jade",
+      },
+      {
+        label: "Budget Used",
+        value: metrics ? `${metrics.budgetUsed}%` : "—",
+        accent: "text-amber",
+      },
+      {
+        label: "Days Left",
+        value: metrics ? `${metrics.daysLeft}d` : "—",
+        accent: "text-white",
+      },
+      {
+        label: "Blocked Tasks",
+        value: metrics ? metrics.blockedTasks : "—",
+        accent: "text-rose",
+      },
+    ],
+    [metrics],
+  );
 
   async function runAnalysis() {
-    setLoading(true)
-    setAnalysis('')
-    setDone(false)
-    const res = await fetch('/api/ai-risk', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    setLoading(true);
+    setAnalysis("");
+    setDone(false);
+
+    const res = await fetch("/api/ai-risk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ projectId: project.id }),
-    })
-    const data = await res.json()
-    setAnalysis(data.analysis || data.error || 'Analysis complete.')
-    setRiskScore(typeof data.riskScore === 'number' ? data.riskScore : null)
-    setFactors(data.factors ?? null)
-    setMetrics(data.metrics ?? null)
-    setDone(true)
-    setLoading(false)
+    });
+    const data = await res.json();
+
+    setAnalysis(data.analysis || data.error || "Analysis complete.");
+    setRiskScore(typeof data.riskScore === "number" ? data.riskScore : null);
+    setFactors(data.factors ?? null);
+    setMetrics(data.metrics ?? null);
+    setDone(true);
+    setLoading(false);
   }
 
-  const tasks = project.tasks
-  const todo = tasks.filter(t => t.status === 'todo').length
-  const inProg = tasks.filter(t => t.status === 'in-progress').length
-  const blocked = tasks.filter(t => t.status === 'blocked').length
-  const done2 = tasks.filter(t => t.status === 'done').length
-  const budgetPct = Math.round(project.spent / project.budget * 100)
-  const daysLeft = Math.ceil((new Date(project.deadline).getTime() - Date.now()) / 86400000)
+  const donutData = [
+    { name: "Risk", value: displayScore },
+    { name: "Remaining", value: 100 - displayScore },
+  ];
 
   return (
     <div className={`glass rounded-xl border ${panelBg}`}>
-      <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
+      <div className="px-6 py-4 border-b border-white/5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <span className="text-base">◎</span>
-          <h2 className="font-display font-semibold text-white">AI Risk Analysis</h2>
+          <h2 className="font-display text-lg font-semibold text-white">
+            AI Risk Analytics
+          </h2>
         </div>
-        <div className="flex items-center gap-3">
-          <div className={`rounded-2xl border px-4 py-2 text-right ${scoreBg}`}>
-            <p className="text-[10px] uppercase tracking-[0.18em] text-white/50">Risk Score</p>
-            <p className={`font-display text-2xl font-bold ${scoreColor}`}>{displayScore}<span className="text-xs text-white/30">/100</span></p>
-          </div>
-          <button
-            onClick={runAnalysis}
-            disabled={loading}
-            className="px-3 py-1.5 bg-accent/20 hover:bg-accent/30 text-accent-light text-xs rounded-lg border border-accent/20 transition-all disabled:opacity-50"
-          >
-            {loading ? '⟳ Analyzing...' : done ? '↺ Re-analyze' : '▶ Run Analysis'}
-          </button>
-        </div>
+        <button
+          onClick={runAnalysis}
+          disabled={loading}
+          className="inline-flex items-center justify-center rounded-xl border border-accent/20 bg-accent/20 px-4 py-2 text-xs font-semibold text-accent-light transition hover:bg-accent/30 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {loading
+            ? "⟳ Analyzing..."
+            : done
+              ? "↺ Re-analyze"
+              : "▶ Run Analysis"}
+        </button>
       </div>
 
-      <div className="p-6">
-        {factors && (
-          <div className="mb-5">
-            <p className="text-xs font-medium text-white/40 uppercase tracking-[0.2em] mb-3">Risk Factors</p>
-            <div className="space-y-3">
-              {Object.entries(factors).map(([key, value]) => (
-                <div key={key}>
-                  <div className="flex items-center justify-between text-xs text-white/50 mb-1">
-                    <span>{formatFactorLabel(key)}</span>
-                    <span>{value}%</span>
-                  </div>
-                  <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                    <div className="h-full bg-accent rounded-full" style={{ width: `${value}%` }} />
-                  </div>
-                </div>
-              ))}
+      <div className="p-6 space-y-6">
+        <section className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
+          <div className="rounded-[1.5rem] border border-white/10 bg-slate-950/40 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.16)]">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.24em] text-white/40">
+                  Overall Risk
+                </p>
+                <p
+                  className={`mt-2 text-3xl font-semibold ${displayColorClass}`}
+                >
+                  {displayScore}%
+                </p>
+              </div>
+              <div className="rounded-3xl bg-white/5 px-3 py-2 text-xs uppercase tracking-[0.18em] text-white/50">
+                {displayScore > 70
+                  ? "High Risk"
+                  : displayScore >= 40
+                    ? "Medium Risk"
+                    : "Low Risk"}
+              </div>
+            </div>
+
+            <div className="mt-6 h-[280px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={donutData}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius={80}
+                    outerRadius={110}
+                    startAngle={90}
+                    endAngle={-270}
+                    paddingAngle={4}
+                    cornerRadius={20}
+                  >
+                    <Cell key="risk" fill={riskColor} />
+                    <Cell key="remaining" fill="rgba(255,255,255,0.1)" />
+                  </Pie>
+                  <text
+                    x="50%"
+                    y="50%"
+                    dominantBaseline="middle"
+                    textAnchor="middle"
+                    fill="#f8fafc"
+                    fontSize="20"
+                    fontWeight={700}
+                  >
+                    Risk {displayScore}%
+                  </text>
+                </PieChart>
+              </ResponsiveContainer>
             </div>
           </div>
-        )}
 
-        {metrics && (
-          <div className="grid grid-cols-2 gap-3 mb-5">
-            {[
-              { label: 'Completion', value: `${metrics.completionPct}%`, accent: 'text-jade' },
-              { label: 'Budget Used', value: `${metrics.budgetUsed}%`, accent: 'text-amber' },
-              { label: 'Days Left', value: `${metrics.daysLeft}d`, accent: 'text-white' },
-              { label: 'Blocked Tasks', value: metrics.blockedTasks, accent: 'text-rose' },
-            ].map((stat) => (
-              <div key={stat.label} className="rounded-xl bg-white/5 p-4 border border-white/5">
-                <p className="text-[10px] text-white/40 uppercase tracking-[0.2em] mb-2">{stat.label}</p>
-                <p className={`text-lg font-semibold ${stat.accent}`}>{stat.value}</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {metricsCards.map((card) => (
+              <div
+                key={card.label}
+                className="rounded-[1.5rem] border border-white/10 bg-slate-950/40 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.12)]"
+              >
+                <p className="text-xs uppercase tracking-[0.18em] text-white/40">
+                  {card.label}
+                </p>
+                <p className={`mt-3 text-2xl font-semibold ${card.accent}`}>
+                  {card.value}
+                </p>
               </div>
             ))}
           </div>
-        )}
+        </section>
 
-        {/* Stored risk reason */}
-        {project.riskReason && !analysis && (
-          <div className="text-sm text-white/60 bg-white/3 rounded-lg p-4 leading-relaxed border border-white/5">
-            <p className="text-xs font-medium text-white/30 mb-2 uppercase tracking-wider">Last Assessment</p>
-            {project.riskReason}
-          </div>
-        )}
-
-        {/* AI analysis */}
-        {loading && (
-          <div className="flex items-center gap-3 text-white/40 py-4">
-            <div className="flex gap-1">
-              {[0,1,2].map(i => (
-                <div key={i} className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
-              ))}
+        <section className="rounded-[1.5rem] border border-white/10 bg-slate-950/40 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.12)]">
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-white/40">
+                Risk Factor Breakdown
+              </p>
+              <p className="mt-1 text-sm text-white/70">
+                Analyze the underlying drivers shaping your project risk score.
+              </p>
             </div>
-            <span className="text-sm">Claude is analyzing your project...</span>
           </div>
-        )}
 
-        {analysis && (
-          <div className="text-sm text-white/70 bg-white/3 rounded-lg p-4 leading-relaxed border border-accent/10 animate-slide-up">
-            <p className="text-xs font-medium text-accent-light mb-2 uppercase tracking-wider">✦ AI Insights</p>
-            {analysis}
+          <div className="h-[320px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={factorChartData}
+                margin={{ top: 16, right: 12, left: 0, bottom: 0 }}
+              >
+                <CartesianGrid
+                  stroke="rgba(255,255,255,0.08)"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="name"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "rgba(248,250,252,0.7)", fontSize: 12 }}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "rgba(248,250,252,0.7)", fontSize: 12 }}
+                />
+                <Tooltip
+                  cursor={{ fill: "rgba(255,255,255,0.06)" }}
+                  contentStyle={{
+                    background: "#0f172a",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    borderRadius: 16,
+                  }}
+                  labelStyle={{ color: "#f8fafc" }}
+                  itemStyle={{ color: "#f8fafc" }}
+                />
+                <Bar dataKey="value" fill={riskColor} radius={[12, 12, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
-        )}
+        </section>
 
-        {!loading && !analysis && !project.riskReason && (
-          <div className="text-center py-4 text-white/25 text-sm">
-            Click "Run Analysis" for AI-powered risk insights
+        <section className="grid gap-4 lg:grid-cols-[1fr]">
+          {project.riskReason && !analysis && (
+            <div className="rounded-[1.5rem] border border-white/10 bg-slate-950/40 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.12)]">
+              <p className="text-xs uppercase tracking-[0.18em] text-white/40">
+                Last Assessment
+              </p>
+              <p className="mt-3 text-sm leading-7 text-white/70">
+                {project.riskReason}
+              </p>
+            </div>
+          )}
+
+          <div className="rounded-[1.5rem] border border-white/10 bg-slate-950/40 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.12)]">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-white/40">
+                  AI Insights
+                </p>
+                <p className="mt-1 text-sm text-white/70">
+                  Qualitative recommendations from the latest risk assessment.
+                </p>
+              </div>
+            </div>
+
+            {loading && (
+              <div className="flex items-center gap-3 text-white/40 py-4">
+                <div className="flex gap-1">
+                  {[0, 1, 2].map((i) => (
+                    <div
+                      key={i}
+                      className="h-2.5 w-2.5 rounded-full bg-accent animate-bounce"
+                      style={{ animationDelay: `${i * 0.15}s` }}
+                    />
+                  ))}
+                </div>
+                <span className="text-sm">
+                  Claude is analyzing your project...
+                </span>
+              </div>
+            )}
+
+            {analysis && (
+              <p className="text-sm leading-7 text-white/70">{analysis}</p>
+            )}
+
+            {!loading && !analysis && !project.riskReason && (
+              <p className="text-sm leading-7 text-white/50">
+                Click “Run Analysis” to power up this dashboard with AI-driven
+                risk intelligence.
+              </p>
+            )}
           </div>
-        )}
+        </section>
       </div>
     </div>
-  )
+  );
 }

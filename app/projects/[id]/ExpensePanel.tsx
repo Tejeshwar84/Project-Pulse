@@ -90,7 +90,8 @@ export default function ExpensePanel({
   };
 
   const remaining = projectBudget - projectSpent;
-  const budgetPercent = projectBudget > 0 ? (projectSpent / projectBudget) * 100 : 0;
+  const budgetPercent =
+    projectBudget > 0 ? (projectSpent / projectBudget) * 100 : 0;
 
   if (loading) return null;
 
@@ -196,7 +197,10 @@ export default function ExpensePanel({
           </div>
         ) : (
           expenses.map((expense) => (
-            <div key={expense.id} className="px-6 py-3 hover:bg-white/2 transition-colors">
+            <div
+              key={expense.id}
+              className="px-6 py-3 hover:bg-white/2 transition-colors"
+            >
               <div className="flex justify-between items-start gap-4">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-white font-medium">
