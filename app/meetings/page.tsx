@@ -6,6 +6,8 @@ interface Meeting {
   title: string;
   description?: string;
   dateTime: string;
+  isCompleted: boolean;
+  completedAt?: string;
   notes?: string;
   actionItems?: string;
   createdBy: string;
@@ -19,12 +21,15 @@ interface User {
   name: string;
 }
 
+type MeetingStatus = "upcoming" | "delayed" | "completed";
+
 export default function MeetingsPage() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
+  const [activeTab, setActiveTab] = useState<MeetingStatus>("upcoming");
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -41,6 +46,37 @@ export default function MeetingsPage() {
     fetchMeetings();
     fetchUsers();
   }, []);
+
+  // Helper function to compute meeting status
+  const getMeetingStatus = (meeting: Meeting): MeetingStatus => {
+    if (meeting.isCompleted) return "completed";
+
+    const now = new Date();
+    const meetingTime = new Date(meeting.dateTime);
+
+    if (meetingTime > now) return "upcoming";
+    return "delayed";
+  };
+
+  // Helper function to format delayed time
+  const getDelayedTime = (dateTime: string): string => {
+    const now = new Date();
+    const meetingTime = new Date(dateTime);
+    const diffMs = now.getTime() - meetingTime.getTime();
+
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    return `${minutes}m`;
+  };
+
+  // Filter meetings by status
+  const filteredMeetings = meetings.filter((meeting) => {
+    return getMeetingStatus(meeting) === activeTab;
+  });
 
   const fetchMeetings = async () => {
     try {
@@ -163,6 +199,23 @@ export default function MeetingsPage() {
     }
   };
 
+  const handleCompleteMeeting = async (id: string) => {
+    if (!confirm("Mark this meeting as completed?")) return;
+    try {
+      const res = await fetch(`/api/meetings/${id}/complete`, {
+        method: "PATCH",
+      });
+      if (res.ok) {
+        fetchMeetings();
+      } else {
+        const error = await res.json();
+        alert(error?.error || "Failed to complete meeting");
+      }
+    } catch (error) {
+      console.error("Failed to complete meeting:", error);
+    }
+  };
+
   if (loading) return <div className="p-6">Loading...</div>;
 
   return (
@@ -175,6 +228,27 @@ export default function MeetingsPage() {
         >
           Create Meeting
         </button>
+      </div>
+
+      {/* Status Tabs */}
+      <div className="flex gap-1 mb-6 bg-surface-2 p-1 rounded-lg">
+        {[
+          { key: "upcoming", label: "Upcoming", color: "text-blue-400" },
+          { key: "delayed", label: "Delayed", color: "text-red-400" },
+          { key: "completed", label: "Completed", color: "text-green-400" },
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key as MeetingStatus)}
+            className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeTab === tab.key
+                ? `${tab.color} bg-surface-1`
+                : "text-white/60 hover:text-white/80"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {showCreateForm && (
@@ -190,6 +264,7 @@ export default function MeetingsPage() {
                 </label>
                 <input
                   type="text"
+                  placeholder="Enter meeting title"
                   value={formData.title}
                   onChange={(e) =>
                     setFormData({ ...formData, title: e.target.value })
@@ -203,6 +278,7 @@ export default function MeetingsPage() {
                   Description
                 </label>
                 <textarea
+                  placeholder="Optional description"
                   value={formData.description}
                   onChange={(e) =>
                     setFormData({ ...formData, description: e.target.value })
@@ -217,6 +293,7 @@ export default function MeetingsPage() {
                 </label>
                 <input
                   type="datetime-local"
+                  title="Choose meeting date and time"
                   value={formData.dateTime}
                   onChange={(e) =>
                     setFormData({ ...formData, dateTime: e.target.value })
@@ -301,6 +378,7 @@ export default function MeetingsPage() {
                   Notes
                 </label>
                 <textarea
+                  placeholder="Add meeting notes"
                   value={editData.notes}
                   onChange={(e) =>
                     setEditData((prev) => ({ ...prev, notes: e.target.value }))
@@ -314,6 +392,7 @@ export default function MeetingsPage() {
                   Action Items
                 </label>
                 <textarea
+                  placeholder="Add action items"
                   value={editData.actionItems}
                   onChange={(e) =>
                     setEditData((prev) => ({
@@ -346,77 +425,135 @@ export default function MeetingsPage() {
       )}
 
       <div className="space-y-4">
-        {meetings.length === 0 ? (
-          <p className="text-white/60">No meetings found.</p>
+        {filteredMeetings.length === 0 ? (
+          <p className="text-white/60">
+            No {activeTab} meetings found.
+          </p>
         ) : (
-          meetings.map((meeting) => (
-            <div
-              key={meeting.id}
-              className="bg-surface-2 p-4 rounded-lg border border-white/10"
-            >
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="text-lg font-semibold text-white">
-                  {meeting.title}
-                </h3>
-                <span className="text-sm text-white/60">
-                  {new Date(meeting.dateTime).toLocaleString()}
-                </span>
-              </div>
-              {meeting.description && (
-                <p className="text-white/80 mb-2">{meeting.description}</p>
-              )}
-              <div className="text-sm text-white/60 mb-2">
-                Created by {meeting.creator.name}
-              </div>
-              <div className="mb-2">
-                <span className="text-sm font-medium text-white/80">
-                  Participants:
-                </span>
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {meeting.participants.map((p) => (
-                    <span
-                      key={p.user.id}
-                      className="px-2 py-1 bg-accent/20 text-accent-light rounded text-xs"
-                    >
-                      {p.user.name}
+          filteredMeetings.map((meeting) => {
+            const status = getMeetingStatus(meeting);
+            const statusConfig = {
+              upcoming: { color: "text-blue-400 bg-blue-400/10", label: "Upcoming" },
+              delayed: { color: "text-red-400 bg-red-400/10", label: "Delayed" },
+              completed: { color: "text-green-400 bg-green-400/10", label: "Completed" },
+            }[status];
+
+            return (
+              <div
+                key={meeting.id}
+                className="bg-surface-2 p-4 rounded-lg border border-white/10"
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="text-lg font-semibold text-white">
+                    {meeting.title}
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusConfig.color}`}>
+                      {statusConfig.label}
                     </span>
-                  ))}
+                    <span className="text-sm text-white/60">
+                      {new Date(meeting.dateTime).toLocaleString()}
+                    </span>
+                  </div>
                 </div>
-              </div>
-              {meeting.canEdit && (
+
+                {meeting.description && (
+                  <p className="text-white/80 mb-2">{meeting.description}</p>
+                )}
+
+                {meeting.notes && status !== "completed" && (
+                  <p className="text-sm text-white/60 mb-2">
+                    {meeting.notes.length > 120
+                      ? `${meeting.notes.slice(0, 120).trim()}...`
+                      : meeting.notes}
+                  </p>
+                )}
+
+                <div className="text-sm text-white/60 mb-2">
+                  Created by {meeting.creator.name}
+                </div>
+
+                {status === "delayed" && (
+                  <div className="text-sm text-red-400 mb-2">
+                    Delayed by {getDelayedTime(meeting.dateTime)}
+                  </div>
+                )}
+
+                {status === "completed" && meeting.completedAt && (
+                  <div className="text-sm text-green-400 mb-2">
+                    Completed on {new Date(meeting.completedAt).toLocaleString()}
+                  </div>
+                )}
+
+                <div className="mb-2">
+                  <span className="text-sm font-medium text-white/80">
+                    Participants:
+                  </span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {meeting.participants.map((p) => (
+                      <span
+                        key={p.user.id}
+                        className="px-2 py-1 bg-accent/20 text-accent-light rounded text-xs"
+                      >
+                        {p.user.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="flex gap-2 mb-2">
-                  <button
-                    onClick={() => openEditMeeting(meeting)}
-                    className="px-3 py-1 text-sm bg-surface-3 text-white rounded-lg hover:bg-white/10"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDeleteMeeting(meeting.id)}
-                    className="px-3 py-1 text-sm text-rose bg-rose/10 rounded-lg hover:bg-rose/20"
-                  >
-                    Delete
-                  </button>
+                  {meeting.canEdit && status !== "completed" && (
+                    <>
+                      <button
+                        onClick={() => openEditMeeting(meeting)}
+                        className="px-3 py-1 text-sm bg-surface-3 text-white rounded-lg hover:bg-white/10"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleCompleteMeeting(meeting.id)}
+                        className="px-3 py-1 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700"
+                      >
+                        Mark as Completed
+                      </button>
+                      <button
+                        onClick={() => handleDeleteMeeting(meeting.id)}
+                        className="px-3 py-1 text-sm text-rose bg-rose/10 rounded-lg hover:bg-rose/20"
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
+                  {status === "completed" && meeting.canEdit && (
+                    <button
+                      onClick={() => handleDeleteMeeting(meeting.id)}
+                      className="px-3 py-1 text-sm text-rose bg-rose/10 rounded-lg hover:bg-rose/20"
+                    >
+                      Delete
+                    </button>
+                  )}
                 </div>
-              )}
-              {meeting.notes && (
-                <div className="mt-2">
-                  <span className="text-sm font-medium text-white/80">
-                    Notes:
-                  </span>
-                  <p className="text-white/60 mt-1">{meeting.notes}</p>
-                </div>
-              )}
-              {meeting.actionItems && (
-                <div className="mt-2">
-                  <span className="text-sm font-medium text-white/80">
-                    Action Items:
-                  </span>
-                  <p className="text-white/60 mt-1">{meeting.actionItems}</p>
-                </div>
-              )}
-            </div>
-          ))
+
+                {meeting.notes && (
+                  <div className="mt-2">
+                    <span className="text-sm font-medium text-white/80">
+                      Notes:
+                    </span>
+                    <p className="text-white/60 mt-1">{meeting.notes}</p>
+                  </div>
+                )}
+
+                {meeting.actionItems && (
+                  <div className="mt-2">
+                    <span className="text-sm font-medium text-white/80">
+                      Action Items:
+                    </span>
+                    <p className="text-white/60 mt-1">{meeting.actionItems}</p>
+                  </div>
+                )}
+              </div>
+            );
+          })
         )}
       </div>
     </div>

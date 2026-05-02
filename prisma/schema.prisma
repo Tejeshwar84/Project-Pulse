@@ -142,6 +142,8 @@ model Meeting {
   title        String
   description  String?
   dateTime     DateTime
+  isCompleted  Boolean              @default(false)
+  completedAt  DateTime?
   createdBy    String // userId
   creator      User                 @relation("MeetingCreator", fields: [createdBy], references: [id], onDelete: Cascade)
   companyId    String
