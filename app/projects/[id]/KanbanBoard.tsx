@@ -28,6 +28,21 @@ type PrioritizedTask = {
   reason: string
 }
 
+type WorkloadUser = {
+  userId: string
+  userName: string
+  taskCount: number
+  highPriorityCount: number
+  status: 'overloaded' | 'balanced' | 'underutilized'
+}
+
+type WorkloadSuggestion = {
+  taskId: string
+  fromUserId: string
+  toUserId: string
+  reason: string
+}
+
 const COLUMNS = [
   { id: 'todo', label: 'To Do', color: 'text-white/60', headerBg: 'bg-white/5' },
   { id: 'in-progress', label: 'In Progress', color: 'text-sky', headerBg: 'bg-sky/10' },
@@ -73,6 +88,8 @@ export default function KanbanBoard({ tasks: initialTasks, projectId, role, user
   const [prioritizationData, setPrioritizationData] = useState<PrioritizedTask[]>([])
   const [analyzingPriority, setAnalyzingPriority] = useState(false)
   const [sortByPriority, setSortByPriority] = useState(false)
+  const [workloadData, setWorkloadData] = useState<{ users: WorkloadUser[]; suggestions: WorkloadSuggestion[] } | null>(null)
+  const [optimizingWorkload, setOptimizingWorkload] = useState(false)
   const router = useRouter()
   const isAdmin = role === 'admin' || role === 'manager'
 
@@ -156,6 +173,58 @@ export default function KanbanBoard({ tasks: initialTasks, projectId, role, user
       setError('Failed to analyze delay risk. Using basic assessment.')
     } finally {
       setAnalyzingRisk(false)
+    }
+  }
+
+  async function optimizeWorkload() {
+    setOptimizingWorkload(true)
+    setError('')
+
+    try {
+      const res = await fetch('/api/ai-workload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId }),
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to optimize workload')
+      }
+
+      const data = await res.json()
+      setWorkloadData({
+        users: data.users || [],
+        suggestions: data.suggestions || [],
+      })
+    } catch (err) {
+      console.error('Workload optimization failed:', err)
+      setError('Failed to optimize workload. Try again.')
+    } finally {
+      setOptimizingWorkload(false)
+    }
+  }
+
+  async function applySuggestion(suggestion: WorkloadSuggestion) {
+    setError('')
+    try {
+      const res = await fetch(`/api/tasks/${suggestion.taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assigneeId: suggestion.toUserId }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Failed to apply suggestion')
+      }
+
+      const updatedTask = await res.json()
+      setTasks(prev => prev.map(task => task.id === updatedTask.id ? updatedTask : task))
+      router.refresh()
+    } catch (err) {
+      console.error('Apply suggestion failed:', err)
+      setError('Failed to apply suggestion. Check permissions.')
     }
   }
 
@@ -283,6 +352,13 @@ export default function KanbanBoard({ tasks: initialTasks, projectId, role, user
               >
                 {analyzingPriority ? '⟳ Analyzing...' : '🔥 Analyze Priority'}
               </button>
+              <button
+                onClick={optimizeWorkload}
+                disabled={optimizingWorkload}
+                className="text-xs text-jade hover:text-jade-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {optimizingWorkload ? '⟳ Optimizing...' : '⚖️ Optimize Workload'}
+              </button>
             </>
           )}
           {isAdmin && (
@@ -367,6 +443,66 @@ export default function KanbanBoard({ tasks: initialTasks, projectId, role, user
                 </div>
               )
             })}
+          </div>
+        </div>
+      )}
+
+      {workloadData && (
+        <div className="px-6 py-4 border-b border-white/5 space-y-4 bg-surface-2/50 animate-in fade-in">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold text-jade flex items-center gap-2">⚖️ Workload Optimization</h3>
+              <p className="text-[10px] text-white/40">Team capacity and suggested task reassignments.</p>
+            </div>
+            <span className="text-[10px] text-white/50">{workloadData.users.length} team members</span>
+          </div>
+
+          <div className="grid gap-3 lg:grid-cols-2">
+            <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+              <h4 className="text-[10px] uppercase tracking-[0.2em] text-white/40 mb-3">Team status</h4>
+              <div className="space-y-2">
+                {workloadData.users.map(user => (
+                  <div key={user.userId} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-surface-3 p-3">
+                    <div>
+                      <p className="text-[11px] font-semibold text-white">{user.userName}</p>
+                      <p className="text-[9px] text-white/40">Tasks: {user.taskCount} • High: {user.highPriorityCount}</p>
+                    </div>
+                    <span className={`text-[10px] font-semibold ${user.status === 'overloaded' ? 'text-red-400' : user.status === 'underutilized' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                      {user.status === 'overloaded' ? '🔴 overloaded' : user.status === 'underutilized' ? '🟢 underutilized' : '🟡 balanced'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+              <h4 className="text-[10px] uppercase tracking-[0.2em] text-white/40 mb-3">Suggestions</h4>
+              <div className="space-y-2">
+                {workloadData.suggestions.length > 0 ? workloadData.suggestions.map(suggestion => {
+                  const task = tasks.find(t => t.id === suggestion.taskId)
+                  const fromUser = workloadData.users.find(user => user.userId === suggestion.fromUserId)
+                  const toUser = workloadData.users.find(user => user.userId === suggestion.toUserId)
+                  return (
+                    <div key={`${suggestion.taskId}-${suggestion.toUserId}`} className="rounded-lg border border-white/10 bg-surface-3 p-3">
+                      <p className="text-[11px] font-semibold text-white">Task: {task?.title || suggestion.taskId}</p>
+                      <p className="text-[9px] text-white/40">From: {fromUser?.userName || suggestion.fromUserId}</p>
+                      <p className="text-[9px] text-white/40">To: {toUser?.userName || suggestion.toUserId}</p>
+                      <p className="text-[9px] text-white/40 mt-1">Reason: {suggestion.reason}</p>
+                      {isAdmin && (
+                        <button
+                          onClick={() => applySuggestion(suggestion)}
+                          className="mt-2 inline-flex items-center rounded-full bg-white/5 px-3 py-1.5 text-[9px] font-semibold text-white/80 hover:bg-white/10 transition-colors"
+                        >
+                          Apply Suggestion
+                        </button>
+                      )}
+                    </div>
+                  )
+                }) : (
+                  <p className="text-[10px] text-white/40">No reassignment suggestions available.</p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
