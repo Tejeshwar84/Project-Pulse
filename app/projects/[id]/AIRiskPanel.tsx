@@ -13,6 +13,152 @@ import {
   CartesianGrid,
 } from "recharts";
 
+// Helper function to process AI insights with markdown removal and keyword highlighting
+function processAIInsights(text: string) {
+  // Strip markdown symbols (**) and trim
+  let processed = text.replace(/\*\*/g, "").trim();
+
+  // Define keywords with their colors
+  const redKeywords = [
+    "critical",
+    "high risk",
+    "delay",
+    "blocked",
+    "failure",
+    "urgent",
+  ];
+  const yellowKeywords = [
+    "moderate risk",
+    "warning",
+    "needs attention",
+    "tight deadline",
+    "overdue soon",
+    "risk increasing",
+  ];
+  const greenKeywords = [
+    "on track",
+    "low risk",
+    "completed",
+    "healthy",
+    "stable",
+  ];
+
+  // Create a map of keywords to colors
+  const keywordMap = new Map<string, string>();
+  redKeywords.forEach((k) => keywordMap.set(k.toLowerCase(), "red"));
+  yellowKeywords.forEach((k) => keywordMap.set(k.toLowerCase(), "yellow"));
+  greenKeywords.forEach((k) => keywordMap.set(k.toLowerCase(), "green"));
+
+  // Sort keywords by length (longest first) to match longer phrases before shorter ones
+  const sortedKeywords = [
+    ...redKeywords,
+    ...yellowKeywords,
+    ...greenKeywords,
+  ].sort((a, b) => b.length - a.length);
+
+  // Create regex with word boundaries
+  const pattern = sortedKeywords.map((k) => `\\b${k}\\b`).join("|");
+  const regex = new RegExp(`(${pattern})`, "gi");
+
+  // Helper to render highlighted text
+  const renderText = (content: string) => {
+    const parts = content.split(regex).filter(Boolean);
+    return parts.map((part, idx) => {
+      const color = keywordMap.get(part.toLowerCase());
+      if (color) {
+        const colorClass =
+          color === "red"
+            ? "text-red-500"
+            : color === "yellow"
+              ? "text-yellow-500"
+              : "text-green-500";
+        return (
+          <span key={idx} className={`${colorClass} font-semibold`}>
+            {part}
+          </span>
+        );
+      }
+      return part;
+    });
+  };
+
+  // Parse lines and build structured elements
+  const lines = processed.split("\n").filter((l) => l.trim());
+  const elements: React.ReactNode[] = [];
+  let currentList: string[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+
+    // Check if line is a numbered list item
+    const numberMatch = line.match(/^\d+\.\s+(.*)/);
+    if (numberMatch) {
+      currentList.push(numberMatch[1]);
+      continue;
+    }
+
+    // Flush current list if we're starting a new section or paragraph
+    if (currentList.length > 0 && !numberMatch) {
+      elements.push(
+        <ul
+          key={`list-${i}`}
+          className="list-disc list-inside space-y-1 mb-3 ml-2"
+        >
+          {currentList.map((item, idx) => (
+            <li
+              key={idx}
+              className="text-sm leading-relaxed text-white/70"
+            >
+              {renderText(item)}
+            </li>
+          ))}
+        </ul>
+      );
+      currentList = [];
+    }
+
+    // Check if line is a section heading (ends with ":")
+    if (line.endsWith(":") && line.length > 2) {
+      elements.push(
+        <h3
+          key={`heading-${i}`}
+          className="font-bold text-base text-white mt-4 mb-2"
+        >
+          {line}
+        </h3>
+      );
+      continue;
+    }
+
+    // Regular paragraph
+    if (line.length > 0 && !numberMatch) {
+      elements.push(
+        <p
+          key={`para-${i}`}
+          className="text-sm leading-relaxed text-white/70 mb-2"
+        >
+          {renderText(line)}
+        </p>
+      );
+    }
+  }
+
+  // Flush remaining list
+  if (currentList.length > 0) {
+    elements.push(
+      <ul key="final-list" className="list-disc list-inside space-y-1 ml-2">
+        {currentList.map((item, idx) => (
+          <li key={idx} className="text-sm leading-relaxed text-white/70">
+            {renderText(item)}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  return <div className="space-y-2">{elements}</div>;
+}
+
 type Project = {
   id: string;
   name: string;
@@ -308,9 +454,7 @@ export default function AIRiskPanel({ project }: { project: Project }) {
               </div>
             )}
 
-            {analysis && (
-              <p className="text-sm leading-7 text-white/70">{analysis}</p>
-            )}
+            {analysis && processAIInsights(analysis)}
 
             {!loading && !analysis && !project.riskReason && (
               <p className="text-sm leading-7 text-white/50">

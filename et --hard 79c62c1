@@ -1,0 +1,15 @@
+[33m4e4f5d3[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m Before meeting status system
+[33m79c62c1[m Before AI text styling upgrade
+[33m1a2b437[m Before advanced AI dashboard UI
+[33m2278e0d[m Before AI dashboard UI upgrade
+[33mf7b44ab[m Backup before Module D AI feature
+[33mbf4a711[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/feature/company-rbac[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mfeature/company-rbac[m[33m)[m Meetings UX fixed + CRUD complete
+[33m2e1c0c5[m Backup before fixing meetings UX and CRUD
+[33m9e26e5d[m Module A backend complete before UI
+[33m8f34da4[m Backup before Module A (Meetings + ToDo + Alerts)
+[33ma414ee4[m Backup before budget totals fix
+[33mcaf25f0[m Backup before mega feature batch
+[33m3510081[m Fixed login session switching bug
+[33ma904912[m Phase 2 signup and approval workflow changes
+[33mb74438a[m Schema updated before migration
+[33md9bedbe[m Initial commit
