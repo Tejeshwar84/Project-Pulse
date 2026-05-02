@@ -60,6 +60,7 @@ export default function KanbanBoard({ tasks: initialTasks, projectId, role, user
   const [newTitle, setNewTitle] = useState('')
   const [newAssigneeId, setNewAssigneeId] = useState('')
   const [newPriority, setNewPriority] = useState<'low' | 'medium' | 'high'>('medium')
+  const [newDueDate, setNewDueDate] = useState('')
   const [error, setError] = useState('')
   const [delayRiskData, setDelayRiskData] = useState<DelayRiskData[]>([])
   const [analyzingRisk, setAnalyzingRisk] = useState(false)
@@ -99,6 +100,7 @@ export default function KanbanBoard({ tasks: initialTasks, projectId, role, user
         status: 'todo',
         priority: newPriority,
         assigneeId: newAssigneeId || null,
+        dueDate: newDueDate || null,
       }),
     })
     if (!res.ok) {
@@ -111,6 +113,7 @@ export default function KanbanBoard({ tasks: initialTasks, projectId, role, user
     setNewTitle('')
     setNewAssigneeId('')
     setNewPriority('medium')
+    setNewDueDate('')
     setAdding(false)
     router.refresh()
   }
@@ -155,6 +158,24 @@ export default function KanbanBoard({ tasks: initialTasks, projectId, role, user
     if (riskScore > 70) return 'text-red-400'
     if (riskScore >= 40) return 'text-yellow-400'
     return 'text-green-400'
+  }
+
+  function formatDeadline(dueDate: string | null): { text: string; isOverdue: boolean } {
+    if (!dueDate) return { text: '', isOverdue: false }
+
+    const due = new Date(dueDate)
+    const now = new Date()
+    const isOverdue = due < now
+
+    const formatted = due.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    })
+
+    return { text: `Due: ${formatted}`, isOverdue }
   }
 
   function getAvailableMoves(task: Task, currentColId: string): typeof COLUMNS {
@@ -223,6 +244,7 @@ export default function KanbanBoard({ tasks: initialTasks, projectId, role, user
               <select
                 value={newAssigneeId}
                 onChange={e => setNewAssigneeId(e.target.value)}
+                title="Assign task to team member"
                 className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-accent/50 cursor-pointer flex-1"
               >
                 <option value="">Assign to… (optional)</option>
@@ -236,12 +258,25 @@ export default function KanbanBoard({ tasks: initialTasks, projectId, role, user
             <select
               value={newPriority}
               onChange={e => setNewPriority(e.target.value as 'low' | 'medium' | 'high')}
+              title="Set task priority"
               className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-accent/50 cursor-pointer"
             >
               <option value="low">Low priority</option>
               <option value="medium">Medium priority</option>
               <option value="high">High priority</option>
             </select>
+
+            {/* Deadline selector */}
+            <div className="flex flex-col gap-1 flex-1 min-w-[140px]">
+              <label className="text-[10px] text-white/60">Deadline (optional)</label>
+              <input
+                type="datetime-local"
+                value={newDueDate}
+                onChange={e => setNewDueDate(e.target.value)}
+                title="Set task deadline"
+                className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-accent/50"
+              />
+            </div>
 
             <button onClick={addTask} className="px-3 py-1.5 bg-accent text-white text-xs rounded-lg hover:bg-accent/80 transition-colors">Add</button>
             <button onClick={() => setAdding(false)} className="px-3 py-1.5 text-white/40 text-xs hover:text-white transition-colors">Cancel</button>
@@ -265,6 +300,7 @@ export default function KanbanBoard({ tasks: initialTasks, projectId, role, user
                   const isPendingReview = col.id === 'pending-review'
                   const assigneeName = task.assignee?.name ?? null
                   const taskRisk = getTaskRisk(task.id)
+                  const deadlineInfo = formatDeadline(task.dueDate)
 
                   return (
                     <div key={task.id} className={`bg-surface-3 rounded-lg p-3 border-l-2 ${PRIORITY_COLOR[task.priority]} group`}>
@@ -276,6 +312,12 @@ export default function KanbanBoard({ tasks: initialTasks, projectId, role, user
                             {assigneeName.split(' ').map((n: string) => n[0]).join('')}
                           </div>
                           <span className="text-[10px] text-white/30">{assigneeName}</span>
+                        </div>
+                      )}
+
+                      {deadlineInfo.text && (
+                        <div className={`text-[9px] mb-2 ${deadlineInfo.isOverdue ? 'text-red-400 font-medium' : 'text-white/40'}`}>
+                          {deadlineInfo.text}
                         </div>
                       )}
 
