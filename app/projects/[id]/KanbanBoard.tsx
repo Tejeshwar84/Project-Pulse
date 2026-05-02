@@ -16,6 +16,12 @@ type TeamMember = { id: string; name: string; role: string }
 
 type Role = 'admin' | 'manager' | 'employee'
 
+type DelayRiskData = {
+  taskId: string
+  riskScore: number
+  reason: string
+}
+
 const COLUMNS = [
   { id: 'todo', label: 'To Do', color: 'text-white/60', headerBg: 'bg-white/5' },
   { id: 'in-progress', label: 'In Progress', color: 'text-sky', headerBg: 'bg-sky/10' },
@@ -55,6 +61,8 @@ export default function KanbanBoard({ tasks: initialTasks, projectId, role, user
   const [newAssigneeId, setNewAssigneeId] = useState('')
   const [newPriority, setNewPriority] = useState<'low' | 'medium' | 'high'>('medium')
   const [error, setError] = useState('')
+  const [delayRiskData, setDelayRiskData] = useState<DelayRiskData[]>([])
+  const [analyzingRisk, setAnalyzingRisk] = useState(false)
   const router = useRouter()
   const isAdmin = role === 'admin' || role === 'manager'
 
@@ -113,6 +121,42 @@ export default function KanbanBoard({ tasks: initialTasks, projectId, role, user
     router.refresh()
   }
 
+  async function analyzeDelayRisk() {
+    setAnalyzingRisk(true)
+    setError('')
+
+    try {
+      const res = await fetch('/api/ai-delay-risk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId }),
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to analyze delay risk')
+      }
+
+      const data = await res.json()
+      setDelayRiskData(data.tasks || [])
+    } catch (err) {
+      console.error('Delay risk analysis failed:', err)
+      setError('Failed to analyze delay risk. Using basic assessment.')
+    } finally {
+      setAnalyzingRisk(false)
+    }
+  }
+
+  function getTaskRisk(taskId: string): DelayRiskData | null {
+    return delayRiskData.find(risk => risk.taskId === taskId) || null
+  }
+
+  function getRiskColor(riskScore: number): string {
+    if (riskScore > 70) return 'text-red-400'
+    if (riskScore >= 40) return 'text-yellow-400'
+    return 'text-green-400'
+  }
+
   function getAvailableMoves(task: Task, currentColId: string): typeof COLUMNS {
     if (isAdmin) {
       // Admins/managers can move to any column except the current one
@@ -132,14 +176,25 @@ export default function KanbanBoard({ tasks: initialTasks, projectId, role, user
             <p className="text-[10px] text-white/30 mt-0.5">Showing your assigned tasks</p>
           )}
         </div>
-        {isAdmin && (
-          <button
-            onClick={() => setAdding(true)}
-            className="text-xs text-accent-light hover:text-white transition-colors"
-          >
-            + Add task
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {isAdmin && (
+            <button
+              onClick={analyzeDelayRisk}
+              disabled={analyzingRisk}
+              className="text-xs text-accent-light hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {analyzingRisk ? '⟳ Analyzing...' : '🔍 Analyze Risk'}
+            </button>
+          )}
+          {isAdmin && (
+            <button
+              onClick={() => setAdding(true)}
+              className="text-xs text-accent-light hover:text-white transition-colors"
+            >
+              + Add task
+            </button>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -209,6 +264,7 @@ export default function KanbanBoard({ tasks: initialTasks, projectId, role, user
                   const isMyTask = task.assigneeId === userId
                   const isPendingReview = col.id === 'pending-review'
                   const assigneeName = task.assignee?.name ?? null
+                  const taskRisk = getTaskRisk(task.id)
 
                   return (
                     <div key={task.id} className={`bg-surface-3 rounded-lg p-3 border-l-2 ${PRIORITY_COLOR[task.priority]} group`}>
@@ -220,6 +276,18 @@ export default function KanbanBoard({ tasks: initialTasks, projectId, role, user
                             {assigneeName.split(' ').map((n: string) => n[0]).join('')}
                           </div>
                           <span className="text-[10px] text-white/30">{assigneeName}</span>
+                        </div>
+                      )}
+
+                      {/* Delay Risk Display */}
+                      {taskRisk && (
+                        <div className="mb-2">
+                          <div className={`text-[9px] font-medium ${getRiskColor(taskRisk.riskScore)}`}>
+                            Risk: {taskRisk.riskScore}%
+                          </div>
+                          <div className="text-[8px] text-white/40 leading-tight mt-0.5">
+                            {taskRisk.reason}
+                          </div>
                         </div>
                       )}
 
