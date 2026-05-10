@@ -426,16 +426,23 @@ export default function MeetingsPage() {
 
       <div className="space-y-4">
         {filteredMeetings.length === 0 ? (
-          <p className="text-white/60">
-            No {activeTab} meetings found.
-          </p>
+          <p className="text-white/60">No {activeTab} meetings found.</p>
         ) : (
           filteredMeetings.map((meeting) => {
             const status = getMeetingStatus(meeting);
             const statusConfig = {
-              upcoming: { color: "text-blue-400 bg-blue-400/10", label: "Upcoming" },
-              delayed: { color: "text-red-400 bg-red-400/10", label: "Delayed" },
-              completed: { color: "text-green-400 bg-green-400/10", label: "Completed" },
+              upcoming: {
+                color: "text-blue-400 bg-blue-400/10",
+                label: "Upcoming",
+              },
+              delayed: {
+                color: "text-red-400 bg-red-400/10",
+                label: "Delayed",
+              },
+              completed: {
+                color: "text-green-400 bg-green-400/10",
+                label: "Completed",
+              },
             }[status];
 
             return (
@@ -448,7 +455,9 @@ export default function MeetingsPage() {
                     {meeting.title}
                   </h3>
                   <div className="flex items-center gap-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusConfig.color}`}>
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${statusConfig.color}`}
+                    >
                       {statusConfig.label}
                     </span>
                     <span className="text-sm text-white/60">
@@ -481,7 +490,8 @@ export default function MeetingsPage() {
 
                 {status === "completed" && meeting.completedAt && (
                   <div className="text-sm text-green-400 mb-2">
-                    Completed on {new Date(meeting.completedAt).toLocaleString()}
+                    Completed on{" "}
+                    {new Date(meeting.completedAt).toLocaleString()}
                   </div>
                 )}
 

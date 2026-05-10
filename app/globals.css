@@ -45,3 +45,56 @@ h1, h2, h3, h4, .font-display {
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-slide-up { animation: slide-up 0.3s ease-out; }
+
+/* ============= Form Element Styling ============= */
+
+/* Global select/option styling for dark theme */
+select {
+  color-scheme: dark;
+  background-color: #1e1e2e;
+  color: #e2e2f0;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+select:hover {
+  border-color: rgba(99, 102, 241, 0.5);
+  background-color: #252535;
+}
+
+select:focus {
+  outline: none;
+  border-color: #6366f1;
+  background-color: #252535;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Option elements - ensure readability in dropdown */
+option {
+  background-color: #1e1e2e;
+  color: #e2e2f0;
+}
+
+/* Selected option state */
+option:checked {
+  background-color: #6366f1;
+  color: #ffffff;
+}
+
+/* Firefox-specific fix for option styling */
+@supports selector(option:checked) {
+  option:checked {
+    background: linear-gradient(#6366f1, #6366f1);
+    background-color: #6366f1;
+  }
+}

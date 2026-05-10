@@ -18,13 +18,18 @@ interface TaskRisk {
   reason: string;
 }
 
-function calculateTaskRisk(task: TaskData, workloadByUser: Map<string, number>): TaskRisk {
+function calculateTaskRisk(
+  task: TaskData,
+  workloadByUser: Map<string, number>,
+): TaskRisk {
   let riskScore = 0;
   const reasons: string[] = [];
 
   // Deadline proximity risk
   if (task.dueDate) {
-    const daysUntilDue = Math.ceil((task.dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    const daysUntilDue = Math.ceil(
+      (task.dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+    );
 
     if (daysUntilDue < 0) {
       riskScore += 100;
@@ -104,7 +109,10 @@ export async function POST(req: Request) {
     const { projectId } = await req.json();
 
     if (!projectId) {
-      return NextResponse.json({ error: "projectId is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "projectId is required" },
+        { status: 400 },
+      );
     }
 
     // Fetch project and tasks
@@ -114,11 +122,11 @@ export async function POST(req: Request) {
         tasks: {
           include: {
             assignee: {
-              select: { id: true, name: true }
-            }
-          }
-        }
-      }
+              select: { id: true, name: true },
+            },
+          },
+        },
+      },
     });
 
     if (!project) {
@@ -129,7 +137,7 @@ export async function POST(req: Request) {
 
     // Calculate workload per user
     const workloadByUser = new Map<string, number>();
-    tasks.forEach(task => {
+    tasks.forEach((task) => {
       if (task.assignee) {
         const current = workloadByUser.get(task.assignee.id) || 0;
         workloadByUser.set(task.assignee.id, current + 1);
@@ -137,14 +145,14 @@ export async function POST(req: Request) {
     });
 
     // Prepare task data for AI analysis
-    const taskSummaries = tasks.map(task => ({
+    const taskSummaries = tasks.map((task) => ({
       id: task.id,
       title: task.title,
       status: task.status,
       priority: task.priority,
-      dueDate: task.dueDate?.toISOString().split('T')[0] || null,
+      dueDate: task.dueDate?.toISOString().split("T")[0] || null,
       assignee: task.assignee?.name || "Unassigned",
-      workload: task.assignee ? workloadByUser.get(task.assignee.id) || 0 : 0
+      workload: task.assignee ? workloadByUser.get(task.assignee.id) || 0 : 0,
     }));
 
     const prompt = `Analyze each task and return delay risk percentage (0-100) with reason.
@@ -168,18 +176,21 @@ No other text or formatting.`;
       const apiKey = process.env.MISTRAL_API_KEY;
       if (!apiKey) throw new Error("No API key");
 
-      const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
+      const response = await fetch(
+        "https://api.mistral.ai/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "mistral-small-latest",
+            max_tokens: 1000,
+            messages: [{ role: "user", content: prompt }],
+          }),
         },
-        body: JSON.stringify({
-          model: "mistral-small-latest",
-          max_tokens: 1000,
-          messages: [{ role: "user", content: prompt }],
-        }),
-      });
+      );
 
       if (!response.ok) throw new Error("API request failed");
 
@@ -196,30 +207,28 @@ No other text or formatting.`;
       }
 
       // Validate and sanitize response
-      const validatedTasks: TaskRisk[] = parsedResponse.map(item => ({
+      const validatedTasks: TaskRisk[] = parsedResponse.map((item) => ({
         taskId: item.taskId,
         riskScore: Math.min(100, Math.max(0, parseInt(item.riskScore) || 0)),
-        reason: item.reason || "Analysis unavailable"
+        reason: item.reason || "Analysis unavailable",
       }));
 
       return NextResponse.json({ tasks: validatedTasks });
-
     } catch (aiError) {
       console.log("AI analysis failed, using rule-based fallback:", aiError);
 
       // Fallback: rule-based analysis
-      const fallbackTasks: TaskRisk[] = tasks.map(task =>
-        calculateTaskRisk(task, workloadByUser)
+      const fallbackTasks: TaskRisk[] = tasks.map((task) =>
+        calculateTaskRisk(task, workloadByUser),
       );
 
       return NextResponse.json({ tasks: fallbackTasks });
     }
-
   } catch (error) {
     console.error("AI delay risk analysis error:", error);
     return NextResponse.json(
       { error: "Failed to analyze delay risk" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

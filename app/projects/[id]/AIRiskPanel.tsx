@@ -105,14 +105,11 @@ function processAIInsights(text: string) {
           className="list-disc list-inside space-y-1 mb-3 ml-2"
         >
           {currentList.map((item, idx) => (
-            <li
-              key={idx}
-              className="text-sm leading-relaxed text-white/70"
-            >
+            <li key={idx} className="text-sm leading-relaxed text-white/70">
               {renderText(item)}
             </li>
           ))}
-        </ul>
+        </ul>,
       );
       currentList = [];
     }
@@ -125,7 +122,7 @@ function processAIInsights(text: string) {
           className="font-bold text-base text-white mt-4 mb-2"
         >
           {line}
-        </h3>
+        </h3>,
       );
       continue;
     }
@@ -138,7 +135,7 @@ function processAIInsights(text: string) {
           className="text-sm leading-relaxed text-white/70 mb-2"
         >
           {renderText(line)}
-        </p>
+        </p>,
       );
     }
   }
@@ -152,7 +149,7 @@ function processAIInsights(text: string) {
             {renderText(item)}
           </li>
         ))}
-      </ul>
+      </ul>,
     );
   }
 
