@@ -8,6 +8,7 @@
     "start": "next start",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
+    "seed:demo": "tsx prisma/seed-demo.ts",
     "setup": "npm install && npx prisma db push && npx tsx prisma/seed.ts"
   },
   "dependencies": {

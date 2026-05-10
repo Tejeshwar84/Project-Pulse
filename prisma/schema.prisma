@@ -38,6 +38,7 @@ model Project {
   tasks       Task[]
   messages    Message[]
   expenses    Expense[]
+  fileAttachments FileAttachment[]
   teamId      String?
   team        Team?     @relation(fields: [teamId], references: [id], onDelete: SetNull)
 }
@@ -53,8 +54,25 @@ model Task {
   dueDate     DateTime?
   projectId   String
   project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  fileAttachments FileAttachment[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+}
+
+model FileAttachment {
+  id                String   @id @default(cuid())
+  originalFileName  String
+  generatedFileName String
+  filePath          String
+  fileSize          Int
+  mimeType          String
+  uploadedById      String
+  uploadedBy        User     @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  projectId         String?
+  project           Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  taskId            String?
+  task              Task?    @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  createdAt         DateTime @default(now())
 }
 
 model Message {
@@ -98,6 +116,7 @@ model User {
   meetingsCreated      Meeting[]            @relation("MeetingCreator")
   meetingsParticipated MeetingParticipant[] @relation("MeetingParticipants")
   expensesCreated      Expense[]            @relation("ExpenseCreator")
+  fileAttachments      FileAttachment[]
 }
 
 model Team {

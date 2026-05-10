@@ -4,8 +4,7 @@ import { getSession } from "@/lib/session";
 import KanbanBoard from "./KanbanBoard";
 import ChatPanel from "./ChatPanel";
 import AIRiskPanel from "./AIRiskPanel";
-import ExpensePanel from "./ExpensePanel";
-import ProjectTeamSelector from "@/components/ProjectTeamSelector";
+import ExpensePanel from "./ExpensePanel";import ProjectFilesPanel from '@/components/ProjectFilesPanel';import ProjectTeamSelector from "@/components/ProjectTeamSelector";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +27,10 @@ export default async function ProjectPage({
             include: { user: { select: { id: true, name: true, role: true } } },
           },
         },
+      },
+      fileAttachments: {
+        orderBy: { createdAt: 'desc' },
+        include: { uploadedBy: { select: { name: true } } },
       },
     },
   });
@@ -61,6 +64,16 @@ export default async function ProjectPage({
   const daysLeft = Math.ceil(
     (new Date(project.deadline).getTime() - Date.now()) / 86400000,
   );
+
+  const fileAttachments = project.fileAttachments.map((file) => ({
+    id: file.id,
+    originalFileName: file.originalFileName,
+    fileSize: file.fileSize,
+    mimeType: file.mimeType,
+    createdAt: file.createdAt.toISOString(),
+    uploadedByName: file.uploadedBy.name,
+    downloadUrl: `/api/uploads/${file.id}`,
+  }))
 
   return (
     <div className="p-8 animate-slide-up">
@@ -178,6 +191,7 @@ export default async function ProjectPage({
             userName={userName}
             canChat={isInTeam}
           />
+          <ProjectFilesPanel projectId={project.id} initialFiles={fileAttachments} />
         </div>
       </div>
     </div>
